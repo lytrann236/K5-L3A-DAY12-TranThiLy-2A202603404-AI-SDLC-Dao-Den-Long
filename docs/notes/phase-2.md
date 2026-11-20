@@ -79,8 +79,8 @@ Từ Việc 2 trở đi, test Phase 1 nào còn đúng với số chuẩn thì g
 | `pulse.test` AC8, `ac08-pulse-stun` (carried 4, đẩy 3 → 7 tức thời, +20) | Sửa: cần 3, đẩy dần 15 tick, +5; đo 3D từ chân + 0.8 | "3 đom đóm / 5 m / 3 s"; "trong 15 tick đầu bị đẩy lùi tổng 4 m"; "+5 mỗi Bóng Mực trúng" |
 | `pulse.test` "trùng vị trí đẩy theo +X", "kẹp mép đảo R 40" | Sửa: đẩy theo +X giữ; "dừng nếu gặp vật cản" thay cho kẹp | "dừng nếu gặp vật cản; trùng vị trí thì đẩy theo +X" |
 | `pulse.test` AC9 (carried < 2, cooldown 90 tick), `ac09a`, `ac09b` | Sửa: carried < 3; cooldown 180 tick | "3 đom đóm / … / 3 s" |
-| `pulse.test` "pulse không trúng vẫn ghi sự kiện" | Giữ | v1.1 không đổi sự kiện `pulse` |
-| `feedback.test` thông báo "Cần ≥ 2 đom đóm" | Sửa chữ thành "≥ 3"; tách theo thứ tự xử lý mới | `pulse_cost` 3 |
+| `pulse.test` "pulse không trúng vẫn ghi sự kiện" | Sửa dựng: carried ≥ 3 (kỳ vọng `stunned_ids` rỗng giữ nguyên) | "3 đom đóm"; v1.1 không đổi sự kiện `pulse` |
+| `feedback.test` thông báo "Cần ≥ 2 đom đóm", "Đang hồi chiêu", "cooldown báo trước khi thiếu", "bấm hợp lệ không báo" | Sửa chữ thành "≥ 3", carried dựng ≥ 3, cooldown 180 tick | `pulse_cost` 3, hồi 3 s |
 | `shades.test` "đuổi 3.5 m/s, Y = 1" | Sửa: 4.0 m/s, chỉ đuổi khi ≤ 12 m | "Tốc độ 4.0 m/s"; "Phát hiện / bỏ đuổi 12 m / 18 m" |
 | `shades.test` AC10, `ac10-shade-hit` (trúng lại ở tick 121, rơi biến mất) | Sửa: bất tử 90 tick; bóng `recoil` lùi 2 m; đom đóm rơi thành `dropped` | "bất tử 90 tick"; "lùi 2 m trong 60 tick"; "rơi … ra vành 1.5–2.5 m" |
 | `shades.test` AC11, `ac11-lose-no-flames`, "3 lần trúng cách 120 tick → tick 241" | Sửa thời điểm theo 90 tick + recoil | "bất tử 90 tick" |
@@ -90,10 +90,21 @@ Từ Việc 2 trở đi, test Phase 1 nào còn đúng với số chuẩn thì g
 | `shades.test` "đèn (36,0,0) / shade (39,0,0) kẹp đảo" | Bỏ hoặc sửa theo bản đồ chuẩn (đèn cố định, mép đảo 40) | Đèn có vị trí chuẩn; bóng sinh tại r 37 |
 | `movement.test` "bị chặn ở mép đảo, không có fall" | Thay: đi quá 40 m thì rơi, `player_hit` `by:"fall"` có `lost` | "`fall_enabled` true"; "Rơi khỏi đảo (Y < −10)" |
 | `movement.test` "nhảy chỉ khi chạm đất" | Sửa đỉnh nhảy theo 7 m/s (≈ 1.225 m) | "Nhảy: Vận tốc 7.0 m/s" |
-| `endgame.test` thắng cùng tick hết giờ, thưởng thời gian theo tick nguyên | Giữ kết quả (vẫn thắng); sửa cách dựng nếu cần vì thắng xét ở bước 11 | "còn sống và tất cả đèn sáng → thắng (kể cả đúng tick hết giờ)" |
+| `endgame.test` 3 test thưởng thắng (time_left_s 0.016; 1.4 thắng ở tick 24 / 25) | Giữ ý nghĩa (vẫn thắng, thưởng theo tick nguyên); sửa dựng carried 10 / `deposited` 9→10 và điểm (+10 × số nạp); thắng xét ở bước 11 | "còn sống và tất cả đèn sáng → thắng (kể cả đúng tick hết giờ)" |
 | `headless.test` parser: `--night` ≠ 1 → mã 2; `deposited` ngoài [0, 5]; id đèn L1…L5 | Sửa: `--night` 1/2/3 hợp lệ; `deposited` ∈ [0, 10]; id theo số đèn của Đêm | "`--night` nhận 1, 2, 3"; "Chi phí thắp 10" |
 | `headless.test` AC16 (snapshot tick 0/10/20, dòng cuối `end`) | Sửa: thêm dòng `night_start` tick 0; kiểm thêm trường v1.1 | Phần 4: snapshot mới, sự kiện `night_start` |
 | Không đổi | AC1–AC3 (`ac01`–`ac03`), AC12 (`ac12-lose-dawn`), AC14 (`ac14-random-determinism`), AC15 (`ac15a`, `ac15b`), `render.test` | Tốc độ 6 m/s tăng tốc tức thời; luật dawn, tính tất định và định dạng lỗi không đổi |
+
+### 2.1 Test đỏ thực tế sau khi đổi contract (Việc 1, chưa sửa code)
+`npx tsc --noEmit` đạt. `npm test` có **21 đỏ / 57 đạt** (78 test). Mọi test đỏ đều đã có trong bảng trên:
+- `endgame.test` (3): thắng cùng tick hết giờ 0.016; 1.4 thắng tick 24; 1.4 thắng tick 25. Nguyên nhân: `lantern_cost` 10.
+- `feedback.test` (4): carried < 2; đang cooldown; cooldown báo trước; bấm hợp lệ. Nguyên nhân: `pulse_cost` 3, `pulse_cooldown_s` 3.
+- `lanterns.test` (2): AC6, AC7. Nguyên nhân: `lantern_cost` 10.
+- `motes.test` (1): biên 1.5 / 1.6 m. Nguyên nhân: `pickup_radius` 1.
+- `pulse.test` (5): AC8; không trúng; trùng vị trí +X; kẹp R 40; AC9 cooldown. Nguyên nhân: `pulse_cost` 3, `pulse_radius` 5, `pulse_cooldown_s` 3, `per_stun` 5.
+- `shades.test` (6): 3.5 m/s; AC10; đang choáng không gây hit; AC11 tick 241; AC13 vùng 5 m; AC13 pulse đẩy vào vùng. Nguyên nhân: `shade_speed` 4, `invuln_s` 1.5, `pulse_stun_s` 2, `safe_radius` 6.
+
+Có một số test vẫn xanh dù luật đã đổi, vì code chưa đổi luật: AC4 cộng điểm khi nhặt, kẹp mép đảo, nhảy 6 m/s, `--night` ≠ 1, random 30 đom đóm / 3 Bóng Mực, AC14b. Việc 2 sẽ sửa các test này theo bảng trên. Scenario trong `scenarios/manifest.txt` cũng sẽ lệch theo số mới; Việc 5 sinh lại bằng chứng cho Phase 2.
 
 ## 3. Đầu ra headless v1.1 (tóm tắt để đối chiếu)
 - Snapshot: thêm `night`, `wind {active, dir_deg}`. `player` thêm `vel`, `grounded`, `invuln`, `dash_cd_s`, `pulse_cd_s`, `charm_s`. Thêm các mảng `motes` [{id, pos, kind, ttl_s}], `drifters` [{id, pos, state, stolen}], `charms` [{id, available, respawn_s}]. Giữ `motes_active`.
