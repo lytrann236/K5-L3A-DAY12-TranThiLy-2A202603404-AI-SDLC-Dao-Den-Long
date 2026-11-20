@@ -5,7 +5,11 @@ Game **không dùng asset bên ngoài**: không có ảnh, mô hình 3D, âm tha
 
 ## Thư viện và công cụ
 - [Three.js](https://threejs.org/) — giấy phép MIT (dùng để vẽ 3D)
-- [Vite](https://vite.dev/), [TypeScript](https://www.typescriptlang.org/), [Vitest](https://vitest.dev/), [tsx](https://tsx.is/) — công cụ build và kiểm thử, giấy phép MIT hoặc Apache-2.0 tùy gói
+- Vite: MIT
+- TypeScript: Apache-2.0
+- Vitest: MIT
+- tsx: MIT
+- (Đã kiểm tra trường `license` trong `node_modules/<gói>/package.json` ngày 2026-11-20.)
 
 Danh sách đầy đủ và phiên bản nằm ở `package.json` / `package-lock.json`.
 
