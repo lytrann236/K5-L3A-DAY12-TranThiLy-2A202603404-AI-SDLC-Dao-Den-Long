@@ -8,6 +8,7 @@ Game 3D (TypeScript + Three.js + Vite). Bài lab chấm tự động qua chế �
 - Test: `npm test` (Vitest)
 - Headless: `npx tsx src/headless/cli.ts --seed 1 --night 1 --ticks 600 --out out.jsonl [--scenario f.json] [--inputs f.json] [--snapshot-every 10]`
 - Kiểm tra kiểu: `npx tsc --noEmit`
+- Chụp ảnh giao diện: `npm run shot [-- <thư mục>]` (mặc định `/tmp/shots`; Playwright + Chromium, chờ theo thời gian game)
 
 ## Cấu trúc
 - `src/sim/` — logic game THUẦN: không import three, không DOM, không `Math.random`, không `Date`. Chạy 60 tick/giây cố định.
@@ -23,4 +24,5 @@ Game 3D (TypeScript + Three.js + Vite). Bài lab chấm tự động qua chế �
 - Phần sáng tạo thêm phải tắt khi chạy headless.
 - Commit nhỏ, mỗi commit một việc. Không commit `.env`, key, token.
 - Subagent `reviewer` chỉ đọc: không chạy `scripts/proof.sh`, không ghi vào `docs/proof/`; mọi output thử nghiệm ghi vào `/tmp`. Chỉ agent chính chạy `scripts/proof.sh` (không đặt `SKIP_TEST` khi tạo bằng chứng thật).
+- Sau mọi thay đổi giao diện, chạy `npm run shot` rồi Read ảnh để tự kiểm tra trước khi báo xong.
 - Trước khi báo xong: chạy `npm test` và `npx tsc --noEmit`.
