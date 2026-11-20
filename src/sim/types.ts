@@ -93,7 +93,9 @@ export interface GameState {
   score: number;
   /** Thời lượng Đêm (giây) lúc dựng scenario. */
   durationS: number;
-  /** time_left_s = durationS − tick / 60. */
+  /** Thời lượng quy ra số tick nguyên = round(durationS × 60). Logic hết giờ và thưởng chỉ dùng số tick này. */
+  durationTicks: number;
+  /** time_left_s hiển thị = max(0, durationS − tick / 60). Không dùng cho logic. */
   timeLeft: number;
   player: Player;
   lanterns: Lantern[];

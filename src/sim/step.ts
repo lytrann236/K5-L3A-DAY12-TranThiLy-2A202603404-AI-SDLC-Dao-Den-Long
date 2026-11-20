@@ -22,6 +22,9 @@ const SHADE_SPAWN_INTERVAL_TICKS = ticksOf(SHADE_SPAWN_INTERVAL_S);
 /** Số lần lặp tối đa khi đẩy Bóng Mực ra khỏi các vùng đèn chồng nhau. */
 const SAFE_PUSH_PASSES = 4;
 
+/** Số tick còn lại, tính bằng số nguyên (không trừ số thực). */
+const ticksLeft = (s: GameState) => s.durationTicks - s.tick;
+
 interface Edges {
   jump: boolean;
   interact: boolean;
@@ -48,12 +51,12 @@ export function step(s: GameState, input: InputState): SimEvent[] {
 
   // Bước đang chạy luôn được tính vào time_left_s, kể cả khi game kết thúc giữa bước.
   s.tick += 1;
-  s.timeLeft = s.durationS - s.tick / TICK_RATE;
+  s.timeLeft = Math.max(0, s.durationS - s.tick / TICK_RATE);
 
   runPhases(s, input, edges, events);
 
   // 10. Kiểm tra thua dawn.
-  if (s.status === 'playing' && s.timeLeft <= 0) {
+  if (s.status === 'playing' && ticksLeft(s) <= 0) {
     endGame(s, events, 'lost', 'dawn');
   }
   return events;
@@ -185,7 +188,7 @@ function interact(s: GameState, edges: Edges, events: SimEvent[]): void {
 
   if (s.lanterns.every((l) => l.lit)) {
     s.score +=
-      TUNING.score.per_second_left * Math.floor(s.timeLeft) +
+      TUNING.score.per_second_left * Math.max(0, Math.floor(ticksLeft(s) / TICK_RATE)) +
       TUNING.score.per_flame_left * p.flames;
     endGame(s, events, 'won', 'all_lit');
   }

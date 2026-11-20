@@ -8,6 +8,7 @@ import {
   SHADE_INITIAL_MIN_DIST,
   SHADE_SPAWN_RADIUS,
   SHADE_Y,
+  TICK_RATE,
 } from './constants';
 import { TUNING } from './contract';
 import { distXZ, randomPointInDisk } from './geom';
@@ -73,6 +74,7 @@ export function createGame(seed: number, scenario: Scenario = {}): GameState {
     status: 'playing',
     score: 0,
     durationS,
+    durationTicks: Math.round(durationS * TICK_RATE),
     timeLeft: durationS,
     player: {
       pos: sp.pos ? [...sp.pos] : [0, 0, 0],
