@@ -1,10 +1,13 @@
 import {
+  DROP_RING_MAX,
+  DROP_RING_MIN,
+  DROP_TTL_TICKS,
   MOTE_MAX_COUNT,
   MOTE_SPAWN_INTERVAL_TICKS,
   PICKUP_MAX_DY,
 } from './constants';
 import { TUNING } from './contract';
-import { distXZ } from './geom';
+import { clampToDisk, distXZ } from './geom';
 import { getMap } from './maps';
 import type { GameState, SimEvent } from './types';
 
@@ -54,4 +57,40 @@ export function spawnMotes(s: GameState): void {
   if (free.length === 0) return; // hết điểm trống thì bỏ lượt
   const pt = free[Math.floor(s.rng() * free.length)];
   s.motes.push({ id: `M${s.nextMoteId++}`, pos: [...pt], kind: 'random', ttl: null });
+}
+
+/** Số bước dò khi kéo điểm rơi về phía Mây để tìm mặt đất. */
+const DROP_PULL_STEPS = 20;
+
+/**
+ * Bị Bóng Mực đánh: `n` đom đóm `dropped` rơi trên vành 1.5–2.5 m quanh Mây (góc và bán kính
+ * theo seed), TTL 480 tick. Điểm không có mặt đất thì kéo về phía Mây tới điểm đứng được gần nhất;
+ * vẫn không có thì kẹp vào phạm vi đảo. Đặt trên mặt đất tại điểm đó.
+ */
+export function dropMotes(s: GameState, n: number): void {
+  const map = getMap(s.night);
+  const p = s.player.pos;
+  for (let i = 0; i < n; i++) {
+    const a = s.rng() * 2 * Math.PI;
+    const r = DROP_RING_MIN + s.rng() * (DROP_RING_MAX - DROP_RING_MIN);
+    let x = p[0] + r * Math.cos(a);
+    let z = p[2] + r * Math.sin(a);
+    let g = map.groundAt(x, z);
+    for (let k = 1; g === null && k <= DROP_PULL_STEPS; k++) {
+      const f = k / DROP_PULL_STEPS;
+      const xx = x + (p[0] - x) * f;
+      const zz = z + (p[2] - z) * f;
+      g = map.groundAt(xx, zz);
+      if (g !== null) {
+        x = xx;
+        z = zz;
+      }
+    }
+    const pos: [number, number, number] = [x, g ?? 0, z];
+    if (g === null) {
+      clampToDisk(pos, map.shadeBound);
+      pos[1] = map.groundAt(pos[0], pos[2]) ?? 0;
+    }
+    s.motes.push({ id: `M${s.nextMoteId++}`, pos, kind: 'dropped', ttl: DROP_TTL_TICKS });
+  }
 }

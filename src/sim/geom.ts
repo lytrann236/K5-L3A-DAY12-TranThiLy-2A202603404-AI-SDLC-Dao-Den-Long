@@ -1,5 +1,8 @@
 import type { Vec3 } from './types';
 
+/** Dung sai cho điểm nằm đúng trên đường tròn (bình phương khoảng cách, m²). */
+const EDGE_EPS = 1e-9;
+
 /** Khoảng cách theo mặt phẳng ngang XZ. */
 export function distXZ(a: Vec3, b: Vec3): number {
   return Math.hypot(a[0] - b[0], a[2] - b[2]);
@@ -39,7 +42,8 @@ export function enterCircleT(p: Vec3, dx: number, dz: number, c: Vec3, r: number
   if (a === 0) return null;
   const b = 2 * (fx * dx + fz * dz);
   const cc = fx * fx + fz * fz - r * r;
-  if (cc < 0) return null; // đang ở trong: không coi là "đi vào"
+  if (cc < -EDGE_EPS) return null; // đang ở trong: không coi là "đi vào"
+  if (cc <= EDGE_EPS) return b < 0 ? 0 : null; // đứng đúng mép: đi vào thì bị chặn ngay
   const disc = b * b - 4 * a * cc;
   if (disc < 0) return null;
   const t = (-b - Math.sqrt(disc)) / (2 * a);
@@ -50,11 +54,11 @@ export function enterCircleT(p: Vec3, dx: number, dz: number, c: Vec3, r: number
 export function exitDiskT(p: Vec3, dx: number, dz: number, r: number): number | null {
   const ex = p[0] + dx;
   const ez = p[2] + dz;
-  if (ex * ex + ez * ez <= r * r) return null;
+  if (ex * ex + ez * ez <= r * r + EDGE_EPS) return null;
   const a = dx * dx + dz * dz;
   const b = 2 * (p[0] * dx + p[2] * dz);
   const cc = p[0] * p[0] + p[2] * p[2] - r * r;
-  if (cc >= 0) return 0; // đã ở trên / ngoài mép
+  if (cc >= -EDGE_EPS) return 0; // đã ở trên / ngoài mép
   const t = (-b + Math.sqrt(b * b - 4 * a * cc)) / (2 * a);
   return Math.max(0, Math.min(1, t));
 }
