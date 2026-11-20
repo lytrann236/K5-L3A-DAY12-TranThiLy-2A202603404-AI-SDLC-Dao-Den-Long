@@ -44,25 +44,33 @@ export interface World {
 
 function makeCloudFolk(angleDeg: number): Group {
   const g = new Group();
+  const BODY_H = 1.4;
+  const HAT_R = 1.4; // nón rộng hơn thân/đầu (thân rộng 1.4 → nửa rộng 0.7)
+  const HAT_H = 0.35; // dẹt
   const body = new Mesh(
-    new BoxGeometry(1.6, 1.4, 1.6),
+    new BoxGeometry(1.4, BODY_H, 1.4),
     new MeshStandardMaterial({ color: 0xf3f6ff, emissive: 0x303a55, roughness: 0.9 }),
   );
-  body.position.y = 0.7;
-  // Nón lá: hình nón dẹt.
+  body.position.y = BODY_H / 2;
+  // Nón lá: hình nón dẹt, đáy là vành nón.
   const hat = new Mesh(
-    new ConeGeometry(1.5, 0.7, 20),
+    new ConeGeometry(HAT_R, HAT_H, 24),
     new MeshStandardMaterial({ color: 0xd9b86c, roughness: 1 }),
   );
-  hat.position.y = 1.4 + 0.35;
-  // Đèn lồng nhỏ treo bên hông.
+  hat.position.y = BODY_H + HAT_H / 2;
+  // Một đèn lồng nhỏ phát sáng vàng ấm, treo ở vành nón.
+  const STRING_H = 0.45;
+  const brimX = HAT_R * 0.92;
   const string = new Mesh(
-    new CylinderGeometry(0.025, 0.025, 0.7, 6),
+    new CylinderGeometry(0.025, 0.025, STRING_H, 6),
     new MeshBasicMaterial({ color: 0x5a3a1a }),
   );
-  string.position.set(1.05, 1.0, 0);
-  const lamp = new Mesh(new SphereGeometry(0.22, 12, 10), new MeshBasicMaterial({ color: LIT_COLOR }));
-  lamp.position.set(1.05, 0.55, 0);
+  string.position.set(brimX, BODY_H - STRING_H / 2, 0);
+  const lamp = new Mesh(
+    new SphereGeometry(0.2, 12, 10),
+    new MeshStandardMaterial({ color: LIT_COLOR, emissive: LIT_EMISSIVE, emissiveIntensity: 2 }),
+  );
+  lamp.position.set(brimX, BODY_H - STRING_H - 0.18, 0);
   g.add(body, hat, string, lamp);
   const a = (angleDeg * Math.PI) / 180;
   g.position.set(CLOUD_FOLK_RADIUS * Math.cos(a), 0, CLOUD_FOLK_RADIUS * Math.sin(a));
