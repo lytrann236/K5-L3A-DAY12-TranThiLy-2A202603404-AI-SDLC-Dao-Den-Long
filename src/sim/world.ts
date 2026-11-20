@@ -1,101 +1,111 @@
 import {
-  LANTERN_RING_RADIUS,
-  LANTERN_START_ANGLE_DEG,
-  MOTE_COUNT,
-  MOTE_MIN_ORIGIN_DIST,
-  MOTE_SPAWN_RADIUS,
-  SHADE_INITIAL_COUNT,
-  SHADE_INITIAL_MIN_DIST,
-  SHADE_SPAWN_RADIUS,
+  MOTE_INITIAL_COUNT,
+  SHADE_RECOIL_TICKS,
+  SHADE_SPAWNING_TICKS,
   SHADE_Y,
   TICK_RATE,
 } from './constants';
 import { TUNING } from './contract';
-import { distXZ, randomPointInDisk } from './geom';
+import { dirXZ } from './geom';
+import { getMap } from './maps';
 import { mulberry32 } from './rng';
-import type { GameState, Lantern, Mote, Scenario, Shade, Vec3 } from './types';
+import type { GameState, Lantern, Scenario, Shade, ShadeState, Vec3 } from './types';
 
-/** Id đèn của Đêm 1: L1…Ln. */
-export function lanternIds(): string[] {
-  return Array.from({ length: TUNING.lantern_count_night1 }, (_, k) => `L${k + 1}`);
+/** Id đèn của một Đêm: L1…Ln theo bản đồ chuẩn. */
+export function lanternIds(night = 1): string[] {
+  return getMap(night).lanterns.map((l) => l.id);
 }
 
-function defaultLanterns(): Lantern[] {
-  const n = TUNING.lantern_count_night1;
-  return lanternIds().map((id, k) => {
-    const a = ((LANTERN_START_ANGLE_DEG + (360 / n) * k) * Math.PI) / 180;
-    return {
-      id,
-      pos: [LANTERN_RING_RADIUS * Math.cos(a), 0, LANTERN_RING_RADIUS * Math.sin(a)],
-      lit: false,
-      deposited: 0,
-    };
-  });
+/** Số tick mặc định của các trạng thái có thời hạn (khi scenario không ghi state_ticks_left). */
+const STUN_TICKS = Math.round(TUNING.pulse_stun_s * TICK_RATE);
+const DEFAULT_STATE_TICKS: Partial<Record<ShadeState, number>> = {
+  spawning: SHADE_SPAWNING_TICKS,
+  recoil: SHADE_RECOIL_TICKS,
+  stunned: STUN_TICKS,
+};
+
+export function newShade(id: string, x: number, z: number, state: ShadeState, ticks: number): Shade {
+  return {
+    id,
+    pos: [x, SHADE_Y, z],
+    state,
+    stateTicks: ticks,
+    pushTicks: 0,
+    pushDir: [1, 0],
+    recoilDir: [1, 0],
+    safeTicks: 0,
+    safeStep: [0, 0],
+  };
 }
 
-/** Sinh một đom đóm ngẫu nhiên (trong 38 m, cách gốc ≥ 3 m). */
-export function spawnRandomMote(s: GameState): Mote {
-  const origin: Vec3 = [0, 0, 0];
-  const pos = randomPointInDisk(
-    s.rng,
-    MOTE_SPAWN_RADIUS,
-    0,
-    (p) => distXZ(p, origin) >= MOTE_MIN_ORIGIN_DIST,
-  );
-  return { id: `M${s.nextMoteId++}`, pos };
-}
-
-/** Sinh một Bóng Mực ngẫu nhiên cách người chơi ≥ minDist. */
-export function spawnRandomShade(s: GameState, minDist: number): Shade {
-  const pos = randomPointInDisk(
-    s.rng,
-    SHADE_SPAWN_RADIUS,
-    SHADE_Y,
-    (p) => distXZ(p, s.player.pos) >= minDist,
-  );
-  return { id: `S${s.nextShadeId++}`, pos, state: 'chase', stun: 0 };
-}
-
-function shadeNum(id: string): number {
+export function shadeNum(id: string): number {
   const m = /^S(\d+)$/.exec(id);
   return m ? Number(m[1]) : 0;
 }
 
+/** Xáo Fisher–Yates bằng RNG có seed (trả về mảng mới). */
+export function shuffled<T>(items: readonly T[], rng: () => number): T[] {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 /**
- * Dựng trạng thái tick 0: mặc định của game rồi áp scenario.
+ * Dựng trạng thái tick 0: mặc định của Đêm rồi áp scenario.
  * Không phát sự kiện, không cộng điểm.
  */
-export function createGame(seed: number, scenario: Scenario = {}): GameState {
+export function createGame(seed: number, scenario: Scenario = {}, night = 1): GameState {
+  const map = getMap(night);
   const sp = scenario.player ?? {};
-  const durationS = scenario.time_left_s ?? TUNING.night1_duration_s;
+  const durationS = scenario.time_left_s ?? map.durationS;
 
   const s: GameState = {
+    night,
     tick: 0,
+    simTick: 0,
     status: 'playing',
+    paused: false,
     score: 0,
     durationS,
     durationTicks: Math.round(durationS * TICK_RATE),
     timeLeft: durationS,
     player: {
-      pos: sp.pos ? [...sp.pos] : [0, 0, 0],
-      vy: 0,
+      pos: sp.pos ? [...sp.pos] : [...map.start],
+      vel: [0, 0, 0],
       grounded: true,
+      facing: [...map.startFacing],
       flames: sp.flames ?? TUNING.flames,
       carried: sp.carried ?? 0,
-      invuln: 0,
-      pulseCooldown: 0,
+      invuln: sp.invuln_ticks ?? 0,
+      pulseCooldown: sp.pulse_cd_ticks ?? 0,
+      dashCooldown: sp.dash_cd_ticks ?? 0,
+      dashTicks: 0,
+      dashDir: [...map.startFacing],
+      charm: sp.charm_ticks ?? 0,
+      respawn: 0,
     },
-    lanterns: defaultLanterns(),
+    lanterns: map.lanterns.map((l): Lantern => ({ id: l.id, pos: [...l.pos], lit: false, deposited: 0 })),
     shades: [],
     motes: [],
+    drifters: [],
+    charms: [],
+    wind: { active: false, dirDeg: 0 },
     randomMotes: scenario.random_motes ?? true,
     randomShades: scenario.random_shades ?? true,
+    randomDrifters: scenario.random_drifters ?? true,
+    windEnabled: scenario.wind_enabled ?? true,
     rng: mulberry32(seed),
-    prevButtons: { jump: false, interact: false, pulse: false },
+    prevButtons: { jump: false, interact: false, pulse: false, dash: false, pause: false },
     nextMoteId: 1,
     nextShadeId: 1,
   };
-  s.player.grounded = s.player.pos[1] <= 0;
+  const p = s.player;
+  const g = map.groundAt(p.pos[0], p.pos[2]);
+  p.grounded = g !== null && p.pos[1] <= g;
+  if (p.grounded) p.pos[1] = g!;
 
   // Đèn: cập nhật theo id.
   for (const l of scenario.lanterns ?? []) {
@@ -110,29 +120,49 @@ export function createGame(seed: number, scenario: Scenario = {}): GameState {
     }
   }
 
-  // Đom đóm.
+  // Đom đóm: scenario thay danh sách; không thì 20 điểm đầu sau khi xáo danh sách điểm của Đêm.
   if (scenario.motes) {
-    s.motes = scenario.motes.map((p) => ({ id: `M${s.nextMoteId++}`, pos: [p[0], 0, p[2]] }));
+    s.motes = scenario.motes.map((m) => ({
+      id: `M${s.nextMoteId++}`,
+      pos: [m[0], map.groundAt(m[0], m[2]) ?? 0, m[2]],
+      kind: 'random',
+      ttl: null,
+    }));
   } else if (s.randomMotes) {
-    for (let i = 0; i < MOTE_COUNT; i++) s.motes.push(spawnRandomMote(s));
+    s.motes = shuffled(map.moteSpawns, s.rng)
+      .slice(0, MOTE_INITIAL_COUNT)
+      .map((pt) => ({ id: `M${s.nextMoteId++}`, pos: [...pt], kind: 'random', ttl: null }));
   }
 
-  // Bóng Mực.
+  // Bóng Mực: chỉ có trong scenario; con ngẫu nhiên sinh theo lịch (bước 10).
   if (scenario.shades) {
     const named = scenario.shades.filter((x) => x.id !== undefined).map((x) => shadeNum(x.id!));
     s.nextShadeId = Math.max(0, ...named) + 1;
-    s.shades = scenario.shades.map((x) => ({
-      id: x.id ?? `S${s.nextShadeId++}`,
-      pos: [x.pos[0], SHADE_Y, x.pos[2]],
-      state: 'chase',
-      stun: 0,
-    }));
+    s.shades = scenario.shades.map((x) => {
+      let state: ShadeState = x.state ?? 'wander';
+      let ticks = x.state_ticks_left ?? DEFAULT_STATE_TICKS[state] ?? 0;
+      if (DEFAULT_STATE_TICKS[state] === undefined) ticks = 0;
+      else if (ticks <= 0) state = 'wander';
+      const sh = newShade(x.id ?? `S${s.nextShadeId++}`, x.pos[0], x.pos[2], state, ticks);
+      if (state === 'recoil') sh.recoilDir = dirXZ(p.pos, sh.pos);
+      return sh;
+    });
     s.nextShadeId = Math.max(s.nextShadeId, ...s.shades.map((x) => shadeNum(x.id) + 1));
-  } else if (s.randomShades) {
-    for (let i = 0; i < SHADE_INITIAL_COUNT; i++) {
-      s.shades.push(spawnRandomShade(s, SHADE_INITIAL_MIN_DIST));
-    }
   }
+
+  // Gió Lạc / Bùa Gió: Đêm 1 không có; scenario có thể đặt (logic ở Việc 3).
+  s.drifters = (scenario.drifters ?? []).map((d, i) => ({
+    id: d.id ?? `D${i + 1}`,
+    pos: [...d.pos] as Vec3,
+    state: d.state ?? 'idle',
+    stolen: d.stolen ?? 0,
+  }));
+  s.charms = (scenario.charms ?? []).map((c, i) => ({
+    id: c.id ?? `C${i + 1}`,
+    pos: [...c.pos] as Vec3,
+    available: c.available ?? true,
+    respawn: c.available === false ? (c.respawn_ticks ?? 0) : 0,
+  }));
 
   return s;
 }

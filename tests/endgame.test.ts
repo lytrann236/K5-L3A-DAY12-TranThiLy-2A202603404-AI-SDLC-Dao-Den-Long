@@ -40,11 +40,13 @@ describe('Thời gian và kết thúc', () => {
   });
 });
 
+// Sửa theo phase-2.md mục 2: dựng carried 10 (lantern_cost 10); điểm thêm 10 × 10 đom đóm nạp;
+// thắng xét ở bước 11. Ý nghĩa (thưởng theo tick nguyên, không âm) giữ nguyên.
 describe('Thời gian tính theo tick nguyên và thưởng thắng', () => {
   const winSetup = (time_left_s: number) =>
     quiet({
       time_left_s,
-      player: { carried: 5 },
+      player: { carried: 10 },
       lanterns: [
         { id: 'L1', lit: true },
         { id: 'L2', lit: true },
@@ -59,8 +61,8 @@ describe('Thời gian tính theo tick nguyên và thưởng thắng', () => {
     expect(r.snap(0).time_left_s).toBe(0.016);
     expect(r.events.map((e) => e.name)).toEqual(['deposit', 'lantern_lit', 'game_over']);
     expect(r.events[2].data).toEqual({ result: 'won', reason: 'all_lit' });
-    // 100 (thắp) + 2 × 0 + 50 × 3 flames = 250 (trước khi sửa: 248 vì floor(−0.0007) = −1).
-    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'won', score: 250 });
+    // 100 (nạp 10) + 100 (thắp) + 2 × 0 + 50 × 3 flames = 350 (thắng cùng tick hết giờ vẫn là thắng).
+    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'won', score: 350 });
     expect(r.snap(1).time_left_s).toBe(0);
   });
 
@@ -69,14 +71,14 @@ describe('Thời gian tính theo tick nguyên và thưởng thắng', () => {
     expect(1.4 - 24 / 60).toBeLessThan(1);
     const r = run({ scenario: winSetup(1.4), frames: [{ tick: 23, interact: true }], ticks: 100 });
     expect(r.events.find((e) => e.name === 'game_over')).toMatchObject({ tick: 24 });
-    // 100 + 2 × 1 + 150 = 252.
-    expect(r.end).toEqual({ type: 'end', ticks: 24, state: 'won', score: 252 });
+    // 100 + 100 + 2 × 1 + 150 = 352.
+    expect(r.end).toEqual({ type: 'end', ticks: 24, state: 'won', score: 352 });
     expect(r.snap(24).time_left_s).toBe(1);
   });
 
   it('thắng ở tick 25 với time_left_s 1.4 → còn 59 tick → floor = 0', () => {
     const r = run({ scenario: winSetup(1.4), frames: [{ tick: 24, interact: true }], ticks: 100 });
-    expect(r.end).toEqual({ type: 'end', ticks: 25, state: 'won', score: 250 });
+    expect(r.end).toEqual({ type: 'end', ticks: 25, state: 'won', score: 350 });
   });
 
   it('dawn đúng ở tick = round(time_left_s × 60), kể cả khi không phải bội của 1/60', () => {
@@ -101,5 +103,42 @@ describe('flames = 0 trong scenario', () => {
     expect(parseScenario('{"player":{"flames":0}}').player?.flames).toBe(0);
     expect(() => parseScenario('{"player":{"flames":-1}}')).toThrow(FormatError);
     expect(() => parseScenario('{"player":{"flames":1.5}}')).toThrow(FormatError);
+  });
+});
+
+describe('AC2-16: thắng/thua xét cuối tick (bước 11)', () => {
+  const lastLamp = (flames: number) =>
+    quiet({
+      player: { carried: 10, flames },
+      shades: [{ pos: [0.5, 0, 0] }],
+      lanterns: [
+        { id: 'L1', lit: true },
+        { id: 'L2', lit: true },
+        { id: 'L3', lit: true },
+        { id: 'L4', lit: true },
+        { id: 'L5', pos: [0, 0, 2] },
+      ],
+    });
+
+  it('thắp đèn cuối và mất ngọn lửa cuối cùng tick → thua no_flames (hết lửa luôn thua)', () => {
+    const r = run({ scenario: lastLamp(1), frames: [{ tick: 0, interact: true }], ticks: 10 });
+    expect(r.events.map((e) => [e.tick, e.name])).toEqual([
+      [1, 'deposit'],
+      [1, 'lantern_lit'],
+      [1, 'player_hit'],
+      [1, 'game_over'],
+    ]);
+    expect(r.events.at(-1)!.data).toEqual({ result: 'lost', reason: 'no_flames' });
+    // Không có thưởng thắng: 100 (nạp) + 100 (thắp).
+    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'lost', score: 200 });
+  });
+
+  it('bị đánh cùng tick thắp đèn cuối nhưng còn lửa → vẫn thắng, thưởng tính theo lửa SAU khi bị đánh', () => {
+    // Phase 1 thắng ở bước 5 nên va chạm cùng tick không xảy ra; v1.1 xét ở bước 11.
+    const r = run({ scenario: lastLamp(3), frames: [{ tick: 0, interact: true }], ticks: 10 });
+    expect(r.events.map((e) => e.name)).toEqual(['deposit', 'lantern_lit', 'player_hit', 'game_over']);
+    expect(r.events.at(-1)!.data).toEqual({ result: 'won', reason: 'all_lit' });
+    // 100 + 100 + 2 × 299 + 50 × 2 = 898.
+    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'won', score: 898 });
   });
 });

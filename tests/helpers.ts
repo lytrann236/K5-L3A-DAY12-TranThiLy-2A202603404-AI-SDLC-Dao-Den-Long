@@ -1,6 +1,8 @@
 import { runHeadless } from '../src/headless/run';
 import type { InputFrame, Scenario } from '../src/sim/types';
 
+type V3 = [number, number, number];
+
 export interface EventLine {
   type: 'event';
   tick: number;
@@ -12,13 +14,27 @@ export interface SnapshotLine {
   tick: number;
   sim_tick: number;
   state: string;
+  night: number;
   time_left_s: number;
   score: number;
-  player: { pos: [number, number, number]; flames: number; carried: number };
-  lanterns: { id: string; pos: [number, number, number]; lit: boolean; deposited: number }[];
-  shades: { id: string; pos: [number, number, number]; state: string }[];
+  wind: { active: boolean; dir_deg: number };
+  player: {
+    pos: V3;
+    vel: V3;
+    grounded: boolean;
+    flames: number;
+    carried: number;
+    invuln: boolean;
+    dash_cd_s: number;
+    pulse_cd_s: number;
+    charm_s: number;
+  };
+  lanterns: { id: string; pos: V3; lit: boolean; deposited: number }[];
+  shades: { id: string; pos: V3; state: string }[];
+  drifters: { id: string; pos: V3; state: string; stolen: number }[];
+  charms: { id: string; available: boolean; respawn_s: number }[];
   motes_active: number;
-  motes: { id: string; pos: [number, number, number] }[];
+  motes: { id: string; pos: V3; kind: 'random' | 'dropped'; ttl_s: number | null }[];
 }
 export interface EndLine {
   type: 'end';
@@ -36,7 +52,11 @@ export const quiet = (sc: Scenario = {}): Scenario => ({
   ...sc,
 });
 
-/** Chạy headless (snapshot mỗi tick) và tách các dòng JSONL ra. */
+/**
+ * Chạy headless (snapshot mỗi tick) và tách các dòng JSONL ra.
+ * `events` bỏ sự kiện `night_start` ở tick 0 (luôn có, v1.1) để các test luật chỉ so sự kiện
+ * gameplay; `allEvents` giữ nguyên toàn bộ (test định dạng dùng cái này).
+ */
 export function run(opts: { scenario?: Scenario; frames?: InputFrame[]; ticks: number; seed?: number }) {
   const lines = runHeadless({
     seed: opts.seed ?? 1,
@@ -45,7 +65,8 @@ export function run(opts: { scenario?: Scenario; frames?: InputFrame[]; ticks: n
     scenario: opts.scenario,
     frames: opts.frames,
   }).map((l) => JSON.parse(l));
-  const events: EventLine[] = lines.filter((l) => l.type === 'event');
+  const allEvents: EventLine[] = lines.filter((l) => l.type === 'event');
+  const events = allEvents.filter((e) => e.name !== 'night_start');
   const snaps = new Map<number, SnapshotLine>();
   for (const l of lines) if (l.type === 'snapshot') snaps.set(l.tick, l);
   const end = lines[lines.length - 1] as EndLine;
@@ -54,5 +75,9 @@ export function run(opts: { scenario?: Scenario; frames?: InputFrame[]; ticks: n
     if (!s) throw new Error(`không có snapshot tick ${t}`);
     return s;
   };
-  return { lines, events, snap, end };
+  return { lines, allEvents, events, snap, end };
 }
+
+/** Các tick có sự kiện tên `name`. */
+export const ticksOf = (events: EventLine[], name: string) =>
+  events.filter((e) => e.name === name).map((e) => e.tick);

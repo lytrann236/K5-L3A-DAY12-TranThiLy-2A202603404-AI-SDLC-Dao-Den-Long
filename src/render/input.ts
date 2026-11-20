@@ -83,6 +83,9 @@ export function createInput(canvas: HTMLElement): GameInput {
         jump: down.has('Space') || pending.jump,
         interact: down.has('KeyE') || pending.interact,
         pulse: down.has('KeyF') || pending.pulse,
+        // Phím lướt / tạm dừng thuộc Việc 6 (giao diện); sim đã hỗ trợ.
+        dash: false,
+        pause: false,
       };
       pending.jump = pending.interact = pending.pulse = false;
       return input;

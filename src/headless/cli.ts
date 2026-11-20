@@ -1,8 +1,10 @@
-// Headless CLI theo Test Contract v1.0:
-//   --seed <int> --night 1 [--scenario f.json] [--inputs f.json] --ticks <int> --out f.jsonl
+// Headless CLI theo Test Contract v1.1:
+//   --seed <int> --night 1|2|3 [--scenario f.json] [--inputs f.json] --ticks <int> --out f.jsonl
 //   [--snapshot-every <int, mặc định 10>]
+// Đêm chưa cài đặt (xem SUPPORTED_NIGHTS) → mã thoát 2, thông báo "chưa hỗ trợ".
 // Mã thoát: 0 = OK, 2 = tham số / file sai định dạng, 1 = lỗi khác.
 import { readFileSync, writeFileSync } from 'node:fs';
+import { SUPPORTED_NIGHTS } from '../sim/maps';
 import { FormatError, parseArgs, parseInputs, parseScenario } from './parse';
 import { runHeadless } from './run';
 
@@ -17,10 +19,16 @@ function readText(path: string, what: string): string {
 function main(): number {
   try {
     const args = parseArgs(process.argv.slice(2));
-    const scenario = args.scenario ? parseScenario(readText(args.scenario, 'scenario')) : undefined;
+    if (!SUPPORTED_NIGHTS.includes(args.night)) {
+      throw new FormatError(`--night ${args.night} chưa hỗ trợ`);
+    }
+    const scenario = args.scenario
+      ? parseScenario(readText(args.scenario, 'scenario'), args.night)
+      : undefined;
     const frames = args.inputs ? parseInputs(readText(args.inputs, 'inputs')) : undefined;
     const lines = runHeadless({
       seed: args.seed,
+      night: args.night,
       ticks: args.ticks,
       snapshotEvery: args.snapshotEvery,
       scenario,

@@ -1,6 +1,7 @@
 import { TUNING } from '../sim/contract';
 import { lanternIds } from '../sim/world';
-import type { InputFrame, Scenario, Vec3 } from '../sim/types';
+import { DRIFTER_STATES, SHADE_STATES } from '../sim/types';
+import type { DrifterState, InputFrame, Scenario, ShadeState, Vec3 } from '../sim/types';
 
 /** Lỗi tham số / định dạng file → CLI thoát với mã 2. */
 export class FormatError extends Error {}
@@ -43,7 +44,7 @@ export function parseArgs(argv: string[]): HeadlessArgs {
     if (!(req in v)) throw new FormatError(`thiếu tham số bắt buộc ${req}`);
   }
   const night = parseIntArg('--night', v['--night'], 1);
-  if (night !== 1) throw new FormatError(`chỉ hỗ trợ --night 1, nhận ${night}`);
+  if (night > 3) throw new FormatError(`--night phải là 1, 2 hoặc 3, nhận ${night}`);
   return {
     seed: parseIntArg('--seed', v['--seed'], Number.MIN_SAFE_INTEGER),
     night,
@@ -101,18 +102,41 @@ export function parseInputs(text: string): InputFrame[] {
       if (!isNum(f.cam_yaw_deg)) throw new FormatError(`${at}.cam_yaw_deg phải là số`);
       frame.cam_yaw_deg = f.cam_yaw_deg;
     }
-    for (const k of ['jump', 'interact', 'pulse'] as const) {
+    for (const k of ['jump', 'interact', 'pulse', 'dash', 'pause'] as const) {
       if (f[k] !== undefined) frame[k] = bool(f[k], `${at}.${k}`);
     }
-    // "dash" (nếu có) không dùng ở Phase 1 nhưng vẫn phải đúng kiểu.
-    if (f.dash !== undefined) bool(f.dash, `${at}.dash`);
     frames.push(frame);
   });
   return frames;
 }
 
-/** File scenario (Test Contract mục D). */
-export function parseScenario(text: string): Scenario {
+function nonNegInt(v: unknown, where: string): number {
+  if (!isInt(v) || v < 0) throw new FormatError(`${where} phải là số nguyên ≥ 0`);
+  return v;
+}
+
+function optId(v: unknown, where: string, seen: Set<string>): string | undefined {
+  if (v === undefined) return undefined;
+  if (typeof v !== 'string' || v === '') throw new FormatError(`${where} phải là chuỗi`);
+  if (seen.has(v)) throw new FormatError(`${where} bị trùng: ${v}`);
+  seen.add(v);
+  return v;
+}
+
+function oneOf<T extends string>(v: unknown, allowed: readonly T[], where: string): T {
+  if (typeof v !== 'string' || !(allowed as readonly string[]).includes(v)) {
+    throw new FormatError(`${where} phải là một trong ${allowed.join(', ')}`);
+  }
+  return v as T;
+}
+
+function arr(v: unknown, where: string): unknown[] {
+  if (!Array.isArray(v)) throw new FormatError(`${where} phải là mảng`);
+  return v;
+}
+
+/** File scenario (Test Contract mục D, v1.1). Id đèn kiểm theo bản đồ của Đêm. */
+export function parseScenario(text: string, night = 1): Scenario {
   const root = parseJson(text, 'scenario');
   if (!isObj(root)) throw new FormatError('scenario phải là đối tượng JSON');
   const sc: Scenario = {};
@@ -122,17 +146,20 @@ export function parseScenario(text: string): Scenario {
     if (!isObj(p)) throw new FormatError('scenario.player phải là đối tượng');
     sc.player = {};
     if (p.pos !== undefined) sc.player.pos = vec3(p.pos, 'scenario.player.pos');
-    if (p.carried !== undefined) {
-      if (!isInt(p.carried) || p.carried < 0) throw new FormatError('scenario.player.carried phải là số nguyên ≥ 0');
-      sc.player.carried = p.carried;
-    }
-    if (p.flames !== undefined) {
-      if (!isInt(p.flames) || p.flames < 0) throw new FormatError('scenario.player.flames phải là số nguyên ≥ 0');
-      sc.player.flames = p.flames;
+    for (const k of [
+      'carried',
+      'flames',
+      'invuln_ticks',
+      'dash_cd_ticks',
+      'pulse_cd_ticks',
+      'charm_ticks',
+    ] as const) {
+      if (p[k] !== undefined) sc.player[k] = nonNegInt(p[k], `scenario.player.${k}`);
     }
   }
-  if (root.random_motes !== undefined) sc.random_motes = bool(root.random_motes, 'scenario.random_motes');
-  if (root.random_shades !== undefined) sc.random_shades = bool(root.random_shades, 'scenario.random_shades');
+  for (const k of ['random_motes', 'random_shades', 'random_drifters', 'wind_enabled'] as const) {
+    if (root[k] !== undefined) sc[k] = bool(root[k], `scenario.${k}`);
+  }
 
   if (root.motes !== undefined) {
     if (!Array.isArray(root.motes)) throw new FormatError('scenario.motes phải là mảng');
@@ -140,25 +167,58 @@ export function parseScenario(text: string): Scenario {
   }
 
   if (root.shades !== undefined) {
-    if (!Array.isArray(root.shades)) throw new FormatError('scenario.shades phải là mảng');
     const seen = new Set<string>();
-    sc.shades = root.shades.map((x: unknown, i: number) => {
+    sc.shades = arr(root.shades, 'scenario.shades').map((x, i) => {
       const at = `scenario.shades[${i}]`;
       if (!isObj(x)) throw new FormatError(`${at} phải là đối tượng`);
-      const out: { id?: string; pos: Vec3 } = { pos: vec3(x.pos, `${at}.pos`) };
-      if (x.id !== undefined) {
-        if (typeof x.id !== 'string' || x.id === '') throw new FormatError(`${at}.id phải là chuỗi`);
-        if (seen.has(x.id)) throw new FormatError(`${at}.id bị trùng: ${x.id}`);
-        seen.add(x.id);
-        out.id = x.id;
+      const out: { id?: string; pos: Vec3; state?: ShadeState; state_ticks_left?: number } = {
+        pos: vec3(x.pos, `${at}.pos`),
+      };
+      const id = optId(x.id, `${at}.id`, seen);
+      if (id !== undefined) out.id = id;
+      if (x.state !== undefined) out.state = oneOf(x.state, SHADE_STATES, `${at}.state`);
+      if (x.state_ticks_left !== undefined) {
+        out.state_ticks_left = nonNegInt(x.state_ticks_left, `${at}.state_ticks_left`);
       }
+      return out;
+    });
+  }
+
+  if (root.drifters !== undefined) {
+    const seen = new Set<string>();
+    sc.drifters = arr(root.drifters, 'scenario.drifters').map((x, i) => {
+      const at = `scenario.drifters[${i}]`;
+      if (!isObj(x)) throw new FormatError(`${at} phải là đối tượng`);
+      const out: { id?: string; pos: Vec3; state?: DrifterState; stolen?: number } = {
+        pos: vec3(x.pos, `${at}.pos`),
+      };
+      const id = optId(x.id, `${at}.id`, seen);
+      if (id !== undefined) out.id = id;
+      if (x.state !== undefined) out.state = oneOf(x.state, DRIFTER_STATES, `${at}.state`);
+      if (x.stolen !== undefined) out.stolen = nonNegInt(x.stolen, `${at}.stolen`);
+      return out;
+    });
+  }
+
+  if (root.charms !== undefined) {
+    const seen = new Set<string>();
+    sc.charms = arr(root.charms, 'scenario.charms').map((x, i) => {
+      const at = `scenario.charms[${i}]`;
+      if (!isObj(x)) throw new FormatError(`${at} phải là đối tượng`);
+      const out: { id?: string; pos: Vec3; available?: boolean; respawn_ticks?: number } = {
+        pos: vec3(x.pos, `${at}.pos`),
+      };
+      const id = optId(x.id, `${at}.id`, seen);
+      if (id !== undefined) out.id = id;
+      if (x.available !== undefined) out.available = bool(x.available, `${at}.available`);
+      if (x.respawn_ticks !== undefined) out.respawn_ticks = nonNegInt(x.respawn_ticks, `${at}.respawn_ticks`);
       return out;
     });
   }
 
   if (root.lanterns !== undefined) {
     if (!Array.isArray(root.lanterns)) throw new FormatError('scenario.lanterns phải là mảng');
-    const ids = lanternIds();
+    const ids = lanternIds(night);
     sc.lanterns = root.lanterns.map((x: unknown, i: number) => {
       const at = `scenario.lanterns[${i}]`;
       if (!isObj(x)) throw new FormatError(`${at} phải là đối tượng`);

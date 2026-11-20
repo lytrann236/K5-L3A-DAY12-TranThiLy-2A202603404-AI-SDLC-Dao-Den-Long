@@ -11,6 +11,7 @@ import { DEFAULT_INPUT } from '../src/sim/types';
 import type { GameState, InputState, Scenario } from '../src/sim/types';
 import { createGame } from '../src/sim/world';
 
+// Sửa theo phase-2.md mục 2: Mây đứng ở (0,0,24) cạnh L1 chuẩn (0,0,25) thay cho (0,0,20).
 const quiet = (sc: Scenario = {}): Scenario => ({
   random_motes: false,
   random_shades: false,
@@ -54,7 +55,7 @@ describe('Thông báo khi bấm không đủ điều kiện', () => {
   });
 
   it('nạp đèn khi không mang đom đóm → "Cần mang đom đóm để nạp đèn"', () => {
-    const s = createGame(1, quiet({ player: { pos: [0, 0, 20], carried: 0 } }));
+    const s = createGame(1, quiet({ player: { pos: [0, 0, 24], carried: 0 } }));
     expect(tick(s, { interact: true })).toBe(MSG_DEPOSIT_NEED_MOTES);
     expect(MSG_DEPOSIT_NEED_MOTES).toBe('Cần mang đom đóm để nạp đèn');
   });
@@ -68,13 +69,13 @@ describe('Thông báo khi bấm không đủ điều kiện', () => {
   it('đứng cạnh đèn ĐÃ thắp cũng bị coi là không có đèn chưa thắp để nạp', () => {
     const s = createGame(
       1,
-      quiet({ player: { pos: [0, 0, 20], carried: 5 }, lanterns: [{ id: 'L1', lit: true }] }),
+      quiet({ player: { pos: [0, 0, 24], carried: 5 }, lanterns: [{ id: 'L1', lit: true }] }),
     );
     expect(tick(s, { interact: true })).toBe(MSG_DEPOSIT_NEED_LANTERN);
   });
 
   it('bấm hợp lệ thì không có thông báo (nạp đèn, tỏa sáng)', () => {
-    const s = createGame(1, quiet({ player: { pos: [0, 0, 20], carried: 7 } }));
+    const s = createGame(1, quiet({ player: { pos: [0, 0, 24], carried: 7 } }));
     expect(tick(s, { interact: true })).toBeNull(); // deposit 5 + lantern_lit
     const s2 = createGame(1, quiet({ player: { carried: 2 } }));
     expect(tick(s2, { pulse: true })).toBeNull();

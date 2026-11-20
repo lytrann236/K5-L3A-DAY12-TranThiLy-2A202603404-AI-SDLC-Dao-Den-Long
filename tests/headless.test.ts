@@ -72,11 +72,27 @@ describe('Headless', () => {
     const out = join(dir, 'x.jsonl');
     expect(cli(['--seed', '1', '--night', '1', '--out', out]).code).toBe(2); // thiếu --ticks
     expect(cli(['--seed', 'abc', '--night', '1', '--ticks', '5', '--out', out]).code).toBe(2);
-    expect(cli(['--seed', '1', '--night', '2', '--ticks', '5', '--out', out]).code).toBe(2);
     expect(cli(['--seed', '1', '--night', '1', '--ticks', '5', '--out', out, '--bogus', '1']).code).toBe(2);
   });
 
-  it('AC16: chạy hợp lệ → mã thoát 0, snapshot tick 0/10/20, dòng cuối là end', () => {
+  // Sửa theo phase-2.md mục 2: "--night nhận 1, 2, 3". Ngoài 1…3 → mã 2. Đêm 2/3 chưa cài đặt
+  // (Việc 3/4) nên tạm thời CLI thoát mã 2 với thông báo "chưa hỗ trợ".
+  it('AC2-51: --night ngoài 1…3 → mã 2; --night 2/3 tạm "chưa hỗ trợ" (mã 2)', () => {
+    const out = join(dir, 'x.jsonl');
+    for (const n of ['0', '4', '-1', '1.5']) {
+      expect(cli(['--seed', '1', '--night', n, '--ticks', '5', '--out', out]).code).toBe(2);
+    }
+    for (const n of ['2', '3']) {
+      const r = cli(['--seed', '1', '--night', n, '--ticks', '5', '--out', out]);
+      expect(r.code).toBe(2);
+      expect(r.stderr).toMatch(/chưa hỗ trợ/);
+    }
+    expect(parseArgs(['--seed', '1', '--night', '3', '--ticks', '1', '--out', 'o']).night).toBe(3);
+    expect(() => parseArgs(['--seed', '1', '--night', '4', '--ticks', '1', '--out', 'o'])).toThrow(FormatError);
+  });
+
+  // Sửa theo phase-2.md mục 2: thêm dòng night_start ở tick 0 và các trường snapshot v1.1.
+  it('AC16 + AC2-52/53: mã thoát 0, snapshot tick 0/10/20, night_start sau snapshot tick 0, dòng cuối end', () => {
     const out = join(dir, 'ok.jsonl');
     const sc = file('quiet.json', JSON.stringify({ random_motes: false, random_shades: false, motes: [], shades: [] }));
     const r = cli(['--seed', '1', '--night', '1', '--scenario', sc, '--ticks', '25', '--out', out]);
@@ -84,10 +100,21 @@ describe('Headless', () => {
     const lines = readFileSync(out, 'utf8').trimEnd().split('\n').map((l) => JSON.parse(l));
     expect(lines.filter((l) => l.type === 'snapshot').map((l) => l.tick)).toEqual([0, 10, 20]);
     expect(lines.at(-1)).toEqual({ type: 'end', ticks: 25, state: 'playing', score: 0 });
-    expect(lines[0]).toMatchObject({ type: 'snapshot', tick: 0, sim_tick: 0, state: 'playing', time_left_s: 300 });
+    expect(lines[0]).toMatchObject({ type: 'snapshot', tick: 0, sim_tick: 0, state: 'playing', night: 1, time_left_s: 300 });
+    expect(lines[1]).toEqual({ type: 'event', tick: 0, name: 'night_start', data: { night: 1 } });
+    expect(lines.filter((l) => l.name === 'night_start')).toHaveLength(1);
     expect(Object.keys(lines[0])).toEqual([
-      'type', 'tick', 'sim_tick', 'state', 'time_left_s', 'score', 'player', 'lanterns', 'shades', 'motes_active', 'motes',
+      'type', 'tick', 'sim_tick', 'state', 'night', 'time_left_s', 'score', 'wind', 'player', 'lanterns',
+      'shades', 'drifters', 'charms', 'motes_active', 'motes',
     ]);
+    expect(lines[0].wind).toEqual({ active: false, dir_deg: 0 });
+    expect(lines[0].player).toEqual({
+      pos: [0, 0, 0], vel: [0, 0, 0], grounded: true, flames: 3, carried: 0,
+      invuln: false, dash_cd_s: 0, pulse_cd_s: 0, charm_s: 0,
+    });
+    // Đêm 1 không có Gió Lạc / Bùa Gió: mảng rỗng nhưng vẫn có mặt.
+    expect(lines[0].drifters).toEqual([]);
+    expect(lines[0].charms).toEqual([]);
   });
 
   it('AC16: --snapshot-every tùy chỉnh và game kết thúc sớm vẫn có end cuối cùng', () => {
@@ -98,6 +125,56 @@ describe('Headless', () => {
     const lines = readFileSync(out, 'utf8').trimEnd().split('\n').map((l) => JSON.parse(l));
     expect(lines.filter((l) => l.type === 'snapshot').map((l) => l.tick)).toEqual([0, 5, 10]);
     expect(lines.at(-1)).toEqual({ type: 'end', ticks: 12, state: 'lost', score: 0 });
+  });
+
+  it('AC2-52/53: snapshot mặc định có motes {id,pos,kind,ttl_s} và các bộ đếm theo giây', () => {
+    const lines = runHeadless({
+      seed: 2,
+      ticks: 0,
+      snapshotEvery: 1,
+      scenario: { random_shades: false, player: { invuln_ticks: 30, dash_cd_ticks: 45, pulse_cd_ticks: 90, charm_ticks: 600 } },
+    }).map((l) => JSON.parse(l));
+    const s0 = lines[0];
+    expect(s0.player).toMatchObject({ invuln: true, dash_cd_s: 0.75, pulse_cd_s: 1.5, charm_s: 10 });
+    expect(Object.keys(s0.motes[0])).toEqual(['id', 'pos', 'kind', 'ttl_s']);
+  });
+
+  it('AC2-54/55: parser nhận trường v1.1 và từ chối sai kiểu', () => {
+    const fr = parseInputs('{"frames":[{"tick":0,"dash":true,"pause":false}]}');
+    expect(fr[0]).toEqual({ tick: 0, dash: true, pause: false });
+    expect(() => parseInputs('{"frames":[{"tick":0,"dash":1}]}')).toThrow(FormatError);
+    expect(() => parseInputs('{"frames":[{"tick":0,"pause":"yes"}]}')).toThrow(FormatError);
+
+    const sc = parseScenario(
+      JSON.stringify({
+        player: { invuln_ticks: 5, dash_cd_ticks: 6, pulse_cd_ticks: 7, charm_ticks: 8 },
+        random_drifters: false,
+        wind_enabled: false,
+        shades: [{ id: 'S1', pos: [1, 0, 0], state: 'stunned', state_ticks_left: 10 }],
+        drifters: [{ id: 'D1', pos: [2, 0, 0], state: 'idle', stolen: 0 }],
+        charms: [{ id: 'C1', pos: [3, 0, 0], available: false, respawn_ticks: 100 }],
+        lanterns: [{ id: 'L1', deposited: 10 }],
+      }),
+    );
+    expect(sc.player).toEqual({ invuln_ticks: 5, dash_cd_ticks: 6, pulse_cd_ticks: 7, charm_ticks: 8 });
+    expect(sc.shades![0]).toEqual({ id: 'S1', pos: [1, 0, 0], state: 'stunned', state_ticks_left: 10 });
+    expect(sc.drifters).toHaveLength(1);
+    expect(sc.charms).toHaveLength(1);
+
+    const bad = [
+      '{"player":{"invuln_ticks":1.5}}',
+      '{"player":{"dash_cd_ticks":-1}}',
+      '{"random_drifters":"no"}',
+      '{"wind_enabled":1}',
+      '{"shades":[{"pos":[0,0,0],"state":"angry"}]}',
+      '{"shades":[{"pos":[0,0,0],"state_ticks_left":-2}]}',
+      '{"drifters":{}}',
+      '{"drifters":[{"pos":[0,0,0],"state":"chasing"}]}',
+      '{"charms":[{"id":"C1"}]}',
+      '{"charms":[{"pos":[0,0,0],"available":"yes"}]}',
+      '{"lanterns":[{"id":"L1","deposited":11}]}',
+    ];
+    for (const b of bad) expect(() => parseScenario(b), b).toThrow(FormatError);
   });
 
   it('parser: kiểm tra kiểu từng trường', () => {

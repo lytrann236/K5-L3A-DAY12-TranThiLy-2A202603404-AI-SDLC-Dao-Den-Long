@@ -1,11 +1,12 @@
 import { createGame } from '../sim/world';
 import { step } from '../sim/step';
-import { toSnapshot } from '../sim/snapshot';
+import { outputState, toSnapshot } from '../sim/snapshot';
 import { DEFAULT_INPUT } from '../sim/types';
 import type { InputFrame, InputState, Scenario } from '../sim/types';
 
 export interface RunOptions {
   seed: number;
+  night?: number;
   ticks: number;
   snapshotEvery: number;
   scenario?: Scenario;
@@ -14,9 +15,14 @@ export interface RunOptions {
 
 /** Chạy sim headless, trả về các dòng JSONL (snapshot / event / end). */
 export function runHeadless(opts: RunOptions): string[] {
-  const s = createGame(opts.seed, opts.scenario ?? {});
+  const night = opts.night ?? 1;
+  const s = createGame(opts.seed, opts.scenario ?? {}, night);
   const frames = opts.frames ?? [];
-  const lines: string[] = [JSON.stringify(toSnapshot(s))];
+  // Tick 0: snapshot rồi night_start (phase-2.md 4.1).
+  const lines: string[] = [
+    JSON.stringify(toSnapshot(s)),
+    JSON.stringify({ type: 'event', tick: 0, name: 'night_start', data: { night } }),
+  ];
   const input: InputState = { ...DEFAULT_INPUT, move: [...DEFAULT_INPUT.move] };
   let fi = 0;
 
@@ -30,6 +36,8 @@ export function runHeadless(opts: RunOptions): string[] {
       if (f.jump !== undefined) input.jump = f.jump;
       if (f.interact !== undefined) input.interact = f.interact;
       if (f.pulse !== undefined) input.pulse = f.pulse;
+      if (f.dash !== undefined) input.dash = f.dash;
+      if (f.pause !== undefined) input.pause = f.pause;
     }
     for (const e of step(s, input)) {
       lines.push(JSON.stringify({ type: 'event', tick: s.tick, name: e.name, data: e.data }));
@@ -37,6 +45,6 @@ export function runHeadless(opts: RunOptions): string[] {
     if (s.tick % opts.snapshotEvery === 0) lines.push(JSON.stringify(toSnapshot(s)));
   }
 
-  lines.push(JSON.stringify({ type: 'end', ticks: s.tick, state: s.status, score: s.score }));
+  lines.push(JSON.stringify({ type: 'end', ticks: s.tick, state: outputState(s), score: s.score }));
   return lines;
 }
