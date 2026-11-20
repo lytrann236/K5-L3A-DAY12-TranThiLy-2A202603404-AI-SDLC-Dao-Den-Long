@@ -127,7 +127,7 @@ export function parseScenario(text: string): Scenario {
       sc.player.carried = p.carried;
     }
     if (p.flames !== undefined) {
-      if (!isInt(p.flames) || p.flames < 1) throw new FormatError('scenario.player.flames phải là số nguyên ≥ 1');
+      if (!isInt(p.flames) || p.flames < 0) throw new FormatError('scenario.player.flames phải là số nguyên ≥ 0');
       sc.player.flames = p.flames;
     }
   }

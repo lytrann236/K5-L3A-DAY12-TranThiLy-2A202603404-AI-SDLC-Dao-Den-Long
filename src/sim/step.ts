@@ -253,6 +253,11 @@ function moveShades(s: GameState): void {
 // 8. Va chạm → kiểm tra thua no_flames. Mỗi tick tối đa 1 lần trúng.
 function collide(s: GameState, events: SimEvent[]): void {
   const p = s.player;
+  // Scenario có thể đặt sẵn flames = 0 → thua no_flames ngay ở bước đầu tiên.
+  if (p.flames <= 0) {
+    endGame(s, events, 'lost', 'no_flames');
+    return;
+  }
   if (p.invuln > 0) return;
   const hitter = s.shades.find(
     (sh) => sh.state === 'chase' && distXZ(sh.pos, p.pos) <= TUNING.shade_hit_radius,

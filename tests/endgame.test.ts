@@ -86,3 +86,20 @@ describe('Thời gian tính theo tick nguyên và thưởng thắng', () => {
     ]);
   });
 });
+
+describe('flames = 0 trong scenario', () => {
+  it('hợp lệ → thua no_flames ở tick 1, không có player_hit', () => {
+    const r = run({ scenario: quiet({ player: { flames: 0 } }), ticks: 100 });
+    expect(r.snap(0).player.flames).toBe(0);
+    expect(r.events).toEqual([
+      { type: 'event', tick: 1, name: 'game_over', data: { result: 'lost', reason: 'no_flames' } },
+    ]);
+    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'lost', score: 0 });
+  });
+
+  it('parseScenario: flames 0 hợp lệ, flames âm hoặc không nguyên bị từ chối', () => {
+    expect(parseScenario('{"player":{"flames":0}}').player?.flames).toBe(0);
+    expect(() => parseScenario('{"player":{"flames":-1}}')).toThrow(FormatError);
+    expect(() => parseScenario('{"player":{"flames":1.5}}')).toThrow(FormatError);
+  });
+});
