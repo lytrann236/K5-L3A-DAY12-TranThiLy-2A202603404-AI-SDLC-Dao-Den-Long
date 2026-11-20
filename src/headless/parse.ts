@@ -179,8 +179,8 @@ export function parseScenario(text: string): Scenario {
   }
 
   if (root.time_left_s !== undefined) {
-    if (!isNum(root.time_left_s) || root.time_left_s <= 0) {
-      throw new FormatError('scenario.time_left_s phải là số > 0');
+    if (!isNum(root.time_left_s) || root.time_left_s < 0) {
+      throw new FormatError('scenario.time_left_s phải là số ≥ 0');
     }
     sc.time_left_s = root.time_left_s;
   }

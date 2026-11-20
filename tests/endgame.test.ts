@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FormatError, parseScenario } from '../src/headless/parse';
 import { quiet, run } from './helpers';
 
 describe('Thời gian và kết thúc', () => {
@@ -23,5 +24,18 @@ describe('Thời gian và kết thúc', () => {
     const r = run({ scenario: quiet({ time_left_s: 0.5 }), ticks: 100 });
     const ticks = r.lines.filter((l) => l.type === 'snapshot').map((l) => l.tick);
     expect(Math.max(...ticks)).toBe(30);
+  });
+
+  it('time_left_s = 0 hợp lệ → thua dawn ngay ở tick 1', () => {
+    const r = run({ scenario: quiet({ time_left_s: 0 }), ticks: 100 });
+    expect(r.events).toEqual([
+      { type: 'event', tick: 1, name: 'game_over', data: { result: 'lost', reason: 'dawn' } },
+    ]);
+    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'lost', score: 0 });
+  });
+
+  it('parseScenario: time_left_s = 0 hợp lệ, số âm bị từ chối', () => {
+    expect(parseScenario('{"time_left_s":0}').time_left_s).toBe(0);
+    expect(() => parseScenario('{"time_left_s":-1}')).toThrow(FormatError);
   });
 });
