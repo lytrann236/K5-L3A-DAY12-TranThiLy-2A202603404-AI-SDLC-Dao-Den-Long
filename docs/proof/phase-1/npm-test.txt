@@ -1,0 +1,11 @@
+
+> k5-l3a-day12-tranthily-2a202603404-ai-sdlc-dao-den-long@0.0.0 test
+> vitest run --passWithNoTests
+
+
+ RUN  v5.1.1 /Users/tranly/Downloads/K5-L3A-DAY12-TranThiLy-2A202603404-AI-SDLC-Dao-Den-Long
+
+
+ Test Files  7 passed (7)
+      Tests  46 passed (46)
+

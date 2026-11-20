@@ -1,0 +1,1 @@
+lỗi: inputs.frames[1].tick phải tăng nghiêm ngặt (5 ≤ 5)
