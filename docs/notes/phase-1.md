@@ -60,6 +60,16 @@ Sự kiện trong bước k ghi `tick = k+1`. Game kết thúc thì dừng ngay 
 - Tọa độ và time_left_s làm tròn 3 chữ số. RNG có seed (mulberry32), không dùng `Math.random` trong logic.
 - Khi headless: tắt mọi phần sáng tạo thêm (không đổi đầu ra).
 
+### Giả định bổ sung khi code
+- **Thưởng thắng** dùng `floor(time_left_s)` của trạng thái SAU bước thắng (bước đó vẫn được tính vào thời gian). Ví dụ: thắp đèn cuối ở tick 1, flames 3 → time_left_s = 299.983, thưởng = 2×299 + 50×3 = 748, cộng 100 điểm thắp đèn = **848 điểm**.
+- **Id đom đóm** là `M1, M2…` tăng dần, kể cả con sinh lại. Snapshot có thêm mảng `motes` [{id, pos}] (khuyến nghị v1.0).
+- Shade trong scenario không có `id` được gán `S1, S2…`; id tự sinh tiếp theo = số lớn nhất hiện có + 1.
+- Pulse đẩy Bóng Mực bị kẹp vào mép đảo (R = 40); bước 7 đẩy mọi Bóng Mực (kể cả đang choáng) ra khỏi vùng `safe_radius` của đèn đã thắp. Trùng tâm đèn thì đẩy theo +X.
+- Bóng Mực ngẫu nhiên sinh trong bán kính 38 m; thêm con mới ở tick 2700, 5400… khi tổng < 6.
+- Đèn scenario `lit: true` → `deposited = lantern_cost`, không cộng điểm.
+- **Thoát mã 2** khi: thiếu `--seed/--ticks/--out/--night`; `--night` ≠ 1; tham số lạ hoặc bị lặp; số không phải số nguyên (`--seed`, `--ticks` ≥ 0, `--snapshot-every` ≥ 1); không đọc được file inputs/scenario; JSON hỏng; `inputs` không phải `{frames: [...]}`, `tick` không phải số nguyên ≥ 0 hoặc không tăng nghiêm ngặt; `move` không phải [x, z] trong [−1, 1]; `cam_yaw_deg` không phải số; `jump/interact/pulse/dash` không phải boolean; scenario sai kiểu (`pos` không phải 3 số, `carried`/`flames` sai, `deposited` ngoài [0, 5], id đèn ngoài L1…L5, id shade trùng, `time_left_s` < 0). `time_left_s = 0` hợp lệ (thua `dawn` ở tick 1).
+- **Hằng số** không có trong `game.contract.json` nằm ở `src/sim/constants.ts`: `TICK_RATE` 60, `ISLAND_RADIUS` 40, `LANTERN_RING_RADIUS` 22, `MOTE_COUNT` 30 / `MOTE_SPAWN_RADIUS` 38 / `MOTE_MIN_ORIGIN_DIST` 3, `JUMP_SPEED` 6, `GRAVITY` 20, `SHADE_Y` 1, shade: 3 ban đầu, tối đa 6, mỗi 45 s, cách ≥ 25 m (đầu) / ≥ 20 m (thêm), vùng sinh 38 m.
+
 ## 2. Tiêu chí nghiệm thu (làm A thì thấy B)
 
 | ID | Tiêu chí | Cách kiểm chứng |
