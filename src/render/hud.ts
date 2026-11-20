@@ -1,9 +1,12 @@
 import { TUNING } from '../sim/contract';
 import { distXZ } from '../sim/geom';
 import type { GameState } from '../sim/types';
+import { NOTICE_MS } from './feedback';
 
 export interface Hud {
-  update(state: GameState, seed: number): void;
+  update(state: GameState, seed: number, nowMs: number): void;
+  /** Hiện thông báo ngắn (NOTICE_MS); chuỗi rỗng = xóa thông báo. */
+  notify(message: string, nowMs: number): void;
 }
 
 const KEY_HINTS =
@@ -25,6 +28,7 @@ export function createHud(hud: HTMLElement, overlay: HTMLElement): Hud {
     </div>
     <div class="seed" data-k="seed"></div>
     <div class="prompt" data-k="prompt" hidden>Có thể nạp đèn (E)</div>
+    <div class="toast" data-k="toast" hidden></div>
     <div class="keys">${KEY_HINTS}</div>`;
   const el = (k: string) => hud.querySelector<HTMLElement>(`[data-k="${k}"]`)!;
   const nodes = {
@@ -35,6 +39,7 @@ export function createHud(hud: HTMLElement, overlay: HTMLElement): Hud {
     score: el('score'),
     seed: el('seed'),
     prompt: el('prompt'),
+    toast: el('toast'),
   };
   // Chỉ ghi DOM khi giá trị đổi.
   const last = new Map<string, string>();
@@ -44,9 +49,19 @@ export function createHud(hud: HTMLElement, overlay: HTMLElement): Hud {
     nodes[k].textContent = v;
   };
   let overlayKey = '';
+  let noticeUntil = 0;
 
   return {
-    update(state, seed) {
+    notify(message, nowMs) {
+      nodes.toast.textContent = message;
+      noticeUntil = message ? nowMs + NOTICE_MS : 0;
+      nodes.toast.hidden = !message;
+    },
+    update(state, seed, nowMs) {
+      if (noticeUntil !== 0 && nowMs >= noticeUntil) {
+        noticeUntil = 0;
+        nodes.toast.hidden = true;
+      }
       const p = state.player;
       const lit = state.lanterns.filter((l) => l.lit).length;
       set('flames', String(p.flames));

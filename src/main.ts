@@ -1,4 +1,5 @@
 import './style.css';
+import { failureMessage } from './render/feedback';
 import { createHud } from './render/hud';
 import { createInput } from './render/input';
 import { createWorld } from './render/scene';
@@ -37,18 +38,23 @@ function frame(now: number): void {
     state = createGame(seed);
     accMs = 0;
     input.reset();
+    hud.notify('', now);
   }
 
   if (state.status === 'playing') {
     const r = advance(accMs, dtMs);
     accMs = r.accMs;
     for (let i = 0; i < r.ticks && state.status === 'playing'; i++) {
-      step(state, input.sample()); // CHÍNH logic của src/sim, không có logic game lần hai
+      const prev = { interact: state.prevButtons.interact, pulse: state.prevButtons.pulse };
+      const sampled = input.sample();
+      const events = step(state, sampled); // CHÍNH logic của src/sim, không có logic game lần hai
+      const notice = failureMessage(prev, sampled, events, state); // chỉ hiển thị, không đổi sim
+      if (notice) hud.notify(notice, now);
     }
   }
 
   world.render(state, now / 1000, input.yawDeg, input.pitchDeg);
-  hud.update(state, seed);
+  hud.update(state, seed, now);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
