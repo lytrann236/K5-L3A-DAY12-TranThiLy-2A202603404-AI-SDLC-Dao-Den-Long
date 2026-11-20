@@ -1,0 +1,17 @@
+{
+  "random_motes": false,
+  "random_shades": false,
+  "motes": [],
+  "shades": [
+    {
+      "pos": [
+        0.5,
+        0,
+        0
+      ]
+    }
+  ],
+  "player": {
+    "carried": 5
+  }
+}

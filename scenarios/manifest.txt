@@ -1,0 +1,20 @@
+# name|AC|seed|ticks|snapshot-every|exit|yêu cầu|kỳ vọng (ngăn cách bằng @@)
+# Kỳ vọng: chuỗi cố định phải có trong output; "#N:chuỗi" = đúng N dòng chứa chuỗi; "#0:chuỗi" = không được xuất hiện.
+ac01-move-z|AC1|1|60|10|0|move [0,1], yaw 0, 60 tick → player (0,0,6)|"tick":60,"sim_tick":60,"state":"playing","time_left_s":299,"score":0,"player":{"pos":[0,0,6],"flames":3,"carried":0}
+ac02-move-yaw90|AC2|1|60|10|0|move [0,1], yaw 90, 60 tick → player (6,0,0)|"tick":60,"sim_tick":60,"state":"playing","time_left_s":299,"score":0,"player":{"pos":[6,0,0],"flames":3,"carried":0}
+ac03-move-normalized|AC3|1|60|10|0|move [1,1] chuẩn hóa: 60 tick đi đúng 6 m (4.243, 4.243)|"tick":60,"sim_tick":60,"state":"playing","time_left_s":299,"score":0,"player":{"pos":[4.243,0,4.243],"flames":3,"carried":0}
+ac04-pickup-mote|AC4|1|5|10|0|Đom đóm (0,0,1) → mote_picked tick 1, carried 1, +10 điểm|{"type":"event","tick":1,"name":"mote_picked","data":{"carried":1}}@@{"type":"end","ticks":5,"state":"playing","score":10}
+ac05-bag-full|AC5|1|30|10|0|Túi đầy (10) thì không nhặt thêm|#0:"name":"mote_picked"@@"tick":30,"sim_tick":30,"state":"playing","time_left_s":299.5,"score":0,"player":{"pos":[0,0,0],"flames":3,"carried":10}
+ac06-deposit-lit|AC6|1|10|10|0|carried 5 cạnh L1, interact → deposit 5 + lantern_lit + 100 điểm|{"type":"event","tick":1,"name":"deposit","data":{"lantern_id":"L1","amount":5,"deposited":5}}@@{"type":"event","tick":1,"name":"lantern_lit","data":{"lantern_id":"L1"}}@@{"type":"end","ticks":10,"state":"playing","score":100}
+ac07-win-all-lit|AC7|1|100|10|0|Thắp đủ 5 đèn → game_over won all_lit + thưởng thời gian/flames (848 điểm)|{"type":"event","tick":1,"name":"game_over","data":{"result":"won","reason":"all_lit"}}@@{"type":"end","ticks":1,"state":"won","score":848}
+ac08-pulse-stun|AC8|1|10|10|0|Pulse carried ≥ 2: shade trong 6 m stunned, đẩy 4 m (3→7), carried −2, +20|{"type":"event","tick":1,"name":"pulse","data":{"stunned_ids":["S1"]}}@@"player":{"pos":[0,0,0],"flames":3,"carried":2}@@"shades":[{"id":"S1","pos":[7,1,0],"state":"stunned"}]@@{"type":"end","ticks":10,"state":"playing","score":20}
+ac09a-pulse-low-carried|AC9|1|10|10|0|Pulse khi carried < 2 → không có sự kiện|#0:"name":"pulse"@@"player":{"pos":[0,0,0],"flames":3,"carried":1}
+ac09b-pulse-cooldown|AC9|1|100|10|0|Pulse khi đang cooldown (tick 2, 89) → chỉ có 1 sự kiện pulse|#1:"name":"pulse"@@"tick":100,"sim_tick":100,"state":"playing","time_left_s":298.333,"score":0,"player":{"pos":[0,0,0],"flames":3,"carried":4}
+ac10-shade-hit|AC10|1|130|10|0|Shade chạm: player_hit, flames −1, rơi floor(5/2)=2, bất tử 2 s (trúng lại ở tick 121)|{"type":"event","tick":1,"name":"player_hit","data":{"by":"shade","flames":2,"dropped":2}}@@{"type":"event","tick":121,"name":"player_hit","data":{"by":"shade","flames":1,"dropped":1}}@@#2:"name":"player_hit"
+ac11-lose-no-flames|AC11|1|50|10|0|flames về 0 → game_over lost no_flames|{"type":"event","tick":1,"name":"player_hit","data":{"by":"shade","flames":0,"dropped":0}}@@{"type":"event","tick":1,"name":"game_over","data":{"result":"lost","reason":"no_flames"}}@@{"type":"end","ticks":1,"state":"lost","score":0}
+ac12-lose-dawn|AC12|1|100|10|0|Hết giờ (time_left_s 0.5) → game_over lost dawn ở tick 30|{"type":"event","tick":30,"name":"game_over","data":{"result":"lost","reason":"dawn"}}@@{"type":"end","ticks":30,"state":"lost","score":0}
+ac13-safe-zone|AC13|1|600|10|0|Shade không vào được 5 m quanh đèn đã thắp (dừng ở (0,1,5), không chạm người chơi)|#0:"name":"player_hit"@@"tick":600,"sim_tick":600@@"shades":[{"id":"S1","pos":[0,1,5],"state":"chase"}]
+ac14-random-determinism|AC14|42|3000|10|0|Cùng seed + input (có random bật) → 2 lần chạy giống hệt; seed khác → khác|#1:"type":"end"
+ac15a-bad-tick-order|AC15|1|10|10|2|inputs có tick không tăng nghiêm ngặt → mã thoát 2|
+ac15b-bad-json|AC15|1|10|10|2|inputs JSON hỏng → mã thoát 2|
+ac16-end-line|AC16|1|25|10|0|Dòng cuối là end, mã thoát 0, snapshot tick 0/10/20|#3:"type":"snapshot"@@{"type":"end","ticks":25,"state":"playing","score":0}
