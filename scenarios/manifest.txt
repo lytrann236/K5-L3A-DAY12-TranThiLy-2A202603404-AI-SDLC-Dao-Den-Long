@@ -15,6 +15,7 @@ ac11-lose-no-flames|AC11|1|50|10|0|flames về 0 → game_over lost no_flames|{"
 ac12-lose-dawn|AC12|1|100|10|0|Hết giờ (time_left_s 0.5) → game_over lost dawn ở tick 30|{"type":"event","tick":30,"name":"game_over","data":{"result":"lost","reason":"dawn"}}@@{"type":"end","ticks":30,"state":"lost","score":0}
 ac13-safe-zone|AC13|1|600|10|0|Shade không vào được 5 m quanh đèn đã thắp (dừng ở (0,1,5), không chạm người chơi)|#0:"name":"player_hit"@@"tick":600,"sim_tick":600@@"shades":[{"id":"S1","pos":[0,1,5],"state":"chase"}]
 ac14-random-determinism|AC14|42|3000|10|0|Cùng seed + input (có random bật) → 2 lần chạy giống hệt; seed khác → khác|#1:"type":"end"
+ac14b-spawn-determinism|AC14|42|6000|10|0|6000 tick, L1 lit tại (0,0,0) giữ người chơi an toàn: shade_spawned S4 ở tick 2700 và S5 ở tick 5400, tất định theo seed|{"type":"event","tick":2700,"name":"shade_spawned","data":{"id":"S4"}}@@{"type":"event","tick":5400,"name":"shade_spawned","data":{"id":"S5"}}@@#2:"name":"shade_spawned"@@#0:"name":"player_hit"@@{"type":"end","ticks":6000,"state":"playing","score":0}
 ac15a-bad-tick-order|AC15|1|10|10|2|inputs có tick không tăng nghiêm ngặt → mã thoát 2|
 ac15b-bad-json|AC15|1|10|10|2|inputs JSON hỏng → mã thoát 2|
 ac16-end-line|AC16|1|25|10|0|Dòng cuối là end, mã thoát 0, snapshot tick 0/10/20|#3:"type":"snapshot"@@{"type":"end","ticks":25,"state":"playing","score":0}

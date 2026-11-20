@@ -64,7 +64,7 @@ while IFS='|' read -r name ac seed ticks every want desc exps; do
       IFS=$'\n' read -r -d '' -a E <<<"${exps//@@/$'\n'}"
       for e in "${E[@]}"; do r=$(check_exp "$OUT/$name.jsonl" "$e"); [ "$r" = ok ] || problems+=("$r"); done
     fi
-    if [ "$name" = "ac14-random-determinism" ]; then
+    if [[ "$name" == ac14* ]]; then
       args2=("${args[@]}"); args2[1]=$((seed+1))
       "${CLI[@]}" "${args2[@]}" --out "$TMP/c.jsonl" 2>/dev/null
       if diff -q "$TMP/a.jsonl" "$TMP/c.jsonl" >/dev/null; then problems+=("seed khác nhưng output giống hệt"); else det="$det; seed khác → khác"; fi
