@@ -1,6 +1,5 @@
 import {
   AmbientLight,
-  BoxGeometry,
   Color,
   ConeGeometry,
   CylinderGeometry,
@@ -24,10 +23,6 @@ import { mulberry32 } from '../sim/rng';
 import type { GameState } from '../sim/types';
 import { placeCamera } from './camera';
 
-/** Mây (nhân vật trang trí, chỉ có ở giao diện): góc đặt quanh mép đảo, tránh góc các đèn. */
-const CLOUD_FOLK_ANGLES_DEG = [30, 200, 280];
-const CLOUD_FOLK_RADIUS = 36;
-
 const LIT_COLOR = 0xffb347;
 const LIT_EMISSIVE = 0xff8a1f;
 
@@ -42,62 +37,26 @@ export interface World {
   resize(): void;
 }
 
-function makeCloudFolk(angleDeg: number): Group {
-  const g = new Group();
-  const BODY_H = 1.4;
-  const HAT_R = 1.4; // nón rộng hơn thân/đầu (thân rộng 1.4 → nửa rộng 0.7)
-  const HAT_H = 0.35; // dẹt
-  const body = new Mesh(
-    new BoxGeometry(1.4, BODY_H, 1.4),
-    new MeshStandardMaterial({ color: 0xf3f6ff, emissive: 0x303a55, roughness: 0.9 }),
-  );
-  body.position.y = BODY_H / 2;
-  // Nón lá: hình nón dẹt, đáy là vành nón.
-  const hat = new Mesh(
-    new ConeGeometry(HAT_R, HAT_H, 24),
-    new MeshStandardMaterial({ color: 0xd9b86c, roughness: 1 }),
-  );
-  hat.position.y = BODY_H + HAT_H / 2;
-  // Một đèn lồng nhỏ phát sáng vàng ấm, treo ở vành nón.
-  const STRING_H = 0.45;
-  const brimX = HAT_R * 0.92;
-  const string = new Mesh(
-    new CylinderGeometry(0.025, 0.025, STRING_H, 6),
-    new MeshBasicMaterial({ color: 0x5a3a1a }),
-  );
-  string.position.set(brimX, BODY_H - STRING_H / 2, 0);
-  const lamp = new Mesh(
-    new SphereGeometry(0.2, 12, 10),
-    new MeshStandardMaterial({ color: LIT_COLOR, emissive: LIT_EMISSIVE, emissiveIntensity: 2 }),
-  );
-  lamp.position.set(brimX, BODY_H - STRING_H - 0.18, 0);
-  g.add(body, hat, string, lamp);
-  const a = (angleDeg * Math.PI) / 180;
-  g.position.set(CLOUD_FOLK_RADIUS * Math.cos(a), 0, CLOUD_FOLK_RADIUS * Math.sin(a));
-  g.lookAt(0, 0, 0);
-  return g;
-}
-
 export function createWorld(canvas: HTMLCanvasElement): World {
   const renderer = new WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new Scene();
   const night = new Color(0x070b18);
-  const dawnish = new Color(0x1a2448);
+  const dawnish = new Color(0x2a3868);
   scene.background = night.clone();
-  scene.fog = new FogExp2(0x0b1230, 0.011);
+  scene.fog = new FogExp2(0x16204a, 0.008);
   const camera = new PerspectiveCamera(60, 1, 0.1, 1500);
 
   // Ánh sáng nền: tăng dần theo số đèn đã thắp.
-  const ambient = new AmbientLight(0x8090c0, 0.3);
-  const moon = new DirectionalLight(0x9fb0e8, 0.25);
+  const ambient = new AmbientLight(0x9aaad8, 0.9);
+  const moon = new DirectionalLight(0xb4c4f4, 0.8);
   moon.position.set(-30, 60, -20);
   scene.add(ambient, moon);
 
   // Đảo tròn 40 m, mặt trên ở Y = 0.
   const island = new Mesh(
     new CylinderGeometry(ISLAND_RADIUS, ISLAND_RADIUS, 3, 72),
-    new MeshStandardMaterial({ color: 0x35553f, roughness: 1 }),
+    new MeshStandardMaterial({ color: 0x4f7d5a, roughness: 1 }),
   );
   island.position.y = -1.5;
   const rock = new Mesh(
@@ -135,15 +94,13 @@ export function createWorld(canvas: HTMLCanvasElement): World {
   }
   scene.add(puffs);
 
-  for (const a of CLOUD_FOLK_ANGLES_DEG) scene.add(makeCloudFolk(a));
-
   // Đèn lồng (tạo theo state lúc cần, vì vị trí có thể bị scenario đổi).
   const lanternViews = new Map<string, LanternView>();
   const lanternRoot = new Group();
   scene.add(lanternRoot);
   const postGeo = new CylinderGeometry(0.12, 0.16, 3, 8);
   const bodyGeo = new SphereGeometry(0.7, 16, 12);
-  const postMat = new MeshStandardMaterial({ color: 0x4a3322, roughness: 1 });
+  const postMat = new MeshStandardMaterial({ color: 0x6b4a30, roughness: 1 });
 
   function lanternView(id: string): LanternView {
     let v = lanternViews.get(id);
@@ -152,7 +109,7 @@ export function createWorld(canvas: HTMLCanvasElement): World {
       post.position.y = 1.5;
       const body = new Mesh(
         bodyGeo,
-        new MeshStandardMaterial({ color: 0x2a1c14, emissive: 0x000000, roughness: 0.8 }),
+        new MeshStandardMaterial({ color: 0x6a4a36, emissive: 0x000000, roughness: 0.8 }),
       );
       body.scale.set(0.8, 1.1, 0.8);
       body.position.y = 3.4;
@@ -167,20 +124,50 @@ export function createWorld(canvas: HTMLCanvasElement): World {
     return v;
   }
 
-  // Người chơi.
-  const player = new Group();
-  const pBody = new Mesh(
-    new CylinderGeometry(0.35, 0.4, 1, 14),
-    new MeshStandardMaterial({ color: 0xf2e3c0, emissive: 0x3a3020, roughness: 0.8 }),
-  );
+  // Người chơi = Mây: thân + đầu, đội nón lá (nón dẹt màu rơm, rộng ≈ 2.5 lần đầu) đặt TRÊN đỉnh đầu,
+  // có một đèn lồng nhỏ đỏ-cam phát sáng treo ở vành nón phía trước, kèm một PointLight vàng ấm.
+  const HEAD_R = 0.3;
+  const HEAD_Y = 1.3;
+  const HAT_R = HEAD_R * 2 * 1.25; // đường kính nón = 2.5 × đường kính đầu
+  const HAT_H = 0.5;
+  const HAT_BASE_Y = HEAD_Y + HEAD_R; // đáy nón chạm đỉnh đầu, không lọt vào đầu
+  const player = new Group(); // trục +Z cục bộ là hướng "phía trước"
+  const cloudMat = new MeshStandardMaterial({ color: 0xf2f5ff, emissive: 0x4a5578, roughness: 0.9 });
+  const pBody = new Mesh(new CylinderGeometry(0.35, 0.4, 1, 14), cloudMat);
   pBody.position.y = 0.5;
-  const pHead = new Mesh(
-    new SphereGeometry(0.3, 14, 10),
-    new MeshStandardMaterial({ color: 0xffeccc, emissive: 0x3a3020, roughness: 0.8 }),
+  const pHead = new Mesh(new SphereGeometry(HEAD_R, 16, 12), cloudMat);
+  pHead.position.y = HEAD_Y;
+  const hat = new Mesh(
+    new ConeGeometry(HAT_R, HAT_H, 32),
+    new MeshStandardMaterial({ color: 0xe2c46e, emissive: 0x5a4618, roughness: 1 }),
   );
-  pHead.position.y = 1.3;
-  player.add(pBody, pHead);
+  hat.position.y = HAT_BASE_Y + HAT_H / 2;
+  // Đèn lồng treo ở vành nón, lệch về phía trước-phải (70° tính từ hướng trước): nhìn rõ cả
+  // từ phía sau lưng (góc nhìn mặc định), không bị nón và thân che.
+  const brimAngle = (70 * Math.PI) / 180;
+  const lx = Math.sin(brimAngle) * HAT_R * 0.92;
+  const lz = Math.cos(brimAngle) * HAT_R * 0.92;
+  const STRING_H = 0.4;
+  const string = new Mesh(
+    new CylinderGeometry(0.02, 0.02, STRING_H, 6),
+    new MeshBasicMaterial({ color: 0x6b4a30 }),
+  );
+  string.position.set(lx, HAT_BASE_Y - STRING_H / 2, lz);
+  const LAMP_Y = HAT_BASE_Y - STRING_H - 0.16;
+  const lamp = new Mesh(
+    new SphereGeometry(0.17, 14, 10),
+    new MeshStandardMaterial({ color: 0xff5a1f, emissive: 0xff4a10, emissiveIntensity: 2.5 }),
+  );
+  lamp.scale.y = 1.2;
+  lamp.position.set(lx, LAMP_Y, lz);
+  const lampLight = new PointLight(0xffa84a, 12, 14, 1.3);
+  lampLight.position.set(lx, LAMP_Y, lz);
+  player.add(pBody, pHead, hat, string, lamp, lampLight);
   scene.add(player);
+  // Hướng mặt: quay theo hướng đi (chỉ ở hiển thị).
+  let faceYaw = 0;
+  let lastX = 0;
+  let lastZ = 0;
 
   // Đom đóm và Bóng Mực: đồng bộ theo id trong state.
   const moteGeo = new SphereGeometry(0.18, 10, 8);
@@ -225,15 +212,15 @@ export function createWorld(canvas: HTMLCanvasElement): World {
     render(state, t, yawDeg, pitchDeg) {
       const litCount = state.lanterns.filter((l) => l.lit).length;
       const k = litCount / Math.max(1, state.lanterns.length);
-      ambient.intensity = 0.3 + 0.7 * k;
-      moon.intensity = 0.25 + 0.6 * k;
+      ambient.intensity = 0.9 + 0.6 * k;
+      moon.intensity = 0.8 + 0.6 * k;
       (scene.background as Color).copy(night).lerp(dawnish, k);
 
       for (const l of state.lanterns) {
         const v = lanternView(l.id);
         v.group.position.set(l.pos[0], l.pos[1], l.pos[2]);
         const mat = v.body.material as MeshStandardMaterial;
-        mat.color.setHex(l.lit ? LIT_COLOR : 0x2a1c14);
+        mat.color.setHex(l.lit ? LIT_COLOR : 0x6a4a36);
         mat.emissive.setHex(l.lit ? LIT_EMISSIVE : 0x000000);
         mat.emissiveIntensity = l.lit ? 1.6 : 0;
         v.light.intensity = l.lit ? 60 : 0;
@@ -241,6 +228,12 @@ export function createWorld(canvas: HTMLCanvasElement): World {
 
       const p = state.player;
       player.position.set(p.pos[0], p.pos[1], p.pos[2]);
+      const mx = p.pos[0] - lastX;
+      const mz = p.pos[2] - lastZ;
+      if (Math.hypot(mx, mz) > 1e-4 && Math.hypot(mx, mz) < 2) faceYaw = Math.atan2(mx, mz);
+      lastX = p.pos[0];
+      lastZ = p.pos[2];
+      player.rotation.y = faceYaw;
       player.visible = p.invuln === 0 || Math.floor(t * 12) % 2 === 0;
 
       const moteIds = new Set<string>();
