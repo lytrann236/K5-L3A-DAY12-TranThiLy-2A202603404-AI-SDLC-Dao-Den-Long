@@ -157,6 +157,28 @@ Có một số test vẫn xanh dù luật đã đổi, vì code chưa đổi lu�
 - **Bùa Gió**: Đêm 1 không có bùa. `charm_s` là thời gian hiệu lực còn lại (giây, 3 chữ số). `respawn_s` của bùa đang `available` là 0. Bùa nhặt lúc túi đầy vẫn được, vì nó không chiếm sức chứa.
 - **Điểm khi thua**: `end.score` là điểm của Đêm đó tới lúc thua (nạp, thắp, pulse), không có thưởng thắng. "Tổng điểm game" (chỉ cộng các Đêm đã thắng) chỉ dùng ở UI, vì headless chạy 1 Đêm.
 - **Tạm dừng**: `pause` (sườn false → true) bật/tắt. Ở tick bật pause: ghi `paused` rồi dừng xử lý. Ở tick bỏ pause: ghi `resumed` rồi chạy bước 2–12 bình thường. Khi tạm dừng, input khác chỉ được ghi nhận làm trạng thái nút (để bắt sườn), không gây hành động.
+- **Bổ sung khi cài đặt Việc 2** (agent tự đặt, người dùng soát lại):
+  - **Mốc thời gian** (sự kiện ở tick t):
+    - Tỏa Sáng ở tick t: `stunned` trong snapshot t…t+119, tick t+120 về `wander` và xét phát hiện ngay. Đẩy lùi chạy ở bước 8 các tick t…t+14.
+    - Hit ở tick t: `recoil` lùi ở bước 8 các tick t+1…t+60; sau lần lùi thứ 60 về `wander`, xét phát hiện từ tick t+61.
+    - Spawning sinh ở tick t: `spawning` trong snapshot t…t+29, tick t+30 về `wander` và xét phát hiện ngay.
+    - Vùng an toàn: đẩy bắt đầu ngay ở bước 6 của tick thắp đèn, chạy 30 tick t…t+29. Trong thời gian đó bóng không tự di chuyển. Luật này áp cho **mọi** bóng ở trong vùng của đèn đã sáng, kể cả bóng do scenario đặt sẵn.
+    - Rơi ở tick t (bước 3): hồi sinh ở bước 3 tick t+60, nên cùng tick đó đã nhặt được đom đóm ở điểm xuất phát. Hết bất tử ở tick t+150.
+  - **Ai gây hit**: bóng `wander` và `chase` gây hit. Bóng `spawning`, `recoil`, `stunned` hoặc đang bị đẩy khỏi vùng an toàn thì không.
+  - **Đo khoảng cách** phát hiện / bỏ đuổi 12 / 18 m theo XZ.
+  - **Điểm sinh Bóng Mực** không chọn điểm đang có bóng đứng trong 1 m, để 2 con ở tick 300 không sinh chồng lên nhau.
+  - **Trần 30 đom đóm** đếm mọi đom đóm trên bản đồ, cả `random` lẫn `dropped`.
+  - **Nhảy** tích phân chính xác với g không đổi: y = v·t − g·t²/2, đỉnh 1.225 m ở tick 21, chạm đất ở tick 42. So sánh chạm đất và ngưỡng rơi Y < −10 có dung sai 1e-9.
+  - **Nhảy trong lúc lướt** bị bỏ qua.
+  - **Trong 60 tick chờ hồi sinh**: không nhặt, không nạp đèn, không Tỏa Sáng, không lướt. Mây đứng yên tại chỗ đã rơi, `vel` = 0.
+  - **`player.invuln`** trong snapshot là boolean: `true` khi còn tick bất tử hoặc đang chờ hồi sinh.
+  - **Dòng `end`** có `state: "paused"` nếu `--ticks` hết đúng lúc đang tạm dừng.
+  - **Scenario**:
+    - `shades[].state_ticks_left` chỉ có nghĩa với `spawning`, `recoil`, `stunned`. Vắng thì lấy mặc định 30 / 60 / 120. Giá trị 0 thì bóng bắt đầu ở `wander`.
+    - `recoil` đặt sẵn lùi theo hướng từ vị trí Mây lúc đầu ra bóng. `stunned` đặt sẵn thì không bị đẩy.
+    - `player.pos` cao hơn mặt đất hoặc ngoài đảo thì Mây bắt đầu trên không và rơi. Đom đóm trong scenario có kind `random`, Y = mặt đất.
+  - **Định dạng tạm** (Việc 3 chốt lại): `drifters` [{`id?`, `pos`, `state?`, `stolen?`}] và `charms` [{`id?`, `pos`, `available?`, `respawn_ticks?`}]. Ở Việc 2 chỉ đọc, kiểm kiểu và in ra snapshot; chưa có hành vi.
+  - **`--night 2|3`**: tạm thoát mã 2 với thông báo "chưa hỗ trợ" tới khi Việc 3/4 cài bản đồ.
 - **Hằng số ngoài contract** đặt trong `src/sim/constants.ts` ở Việc 2: nhảy 7 / −20, chênh cao 1.5, phát hiện 12 / 18, recoil 2 m / 60 tick, spawning 30 tick, bóng Đêm 3 4.5 m/s, bản đồ 3 Đêm, bục nhảy, Gió Lạc (7 / 2 m/s, 1.2 m, cướp 3, ngưỡng 5 đom đóm / 15 m, flee 240 tick, thả 120 tick, sinh tick 1200k), Bùa (600 tick, 7.2 m/s, hồi 2700 tick), gió (1800 / 300 / 120 tick, 2 m/s), rơi (Y −10, chờ 60 tick).
 
 ### 4.3 Thứ tự xử lý một tick (theo ticket, bắt buộc)
