@@ -102,8 +102,10 @@ Sự kiện trong bước k ghi `tick = k+1`. Game kết thúc thì dừng ngay 
 - Tất định: chạy 2 lần, so sánh bằng `diff`.
 - Giao diện: ảnh chụp HUD, thắng/thua.
 
-## 4. Đánh giá Phase 1 (điền khi xong)
-- Đạt:
-- Chưa đạt (lý do):
-- AI sai ở đâu / đã chỉnh harness gì:
-- Token / chi phí ước tính:
+## 4. Đánh giá Phase 1
+- Đạt: AC1–AC16 qua headless (78 unit test, 19 case trong `scripts/proof.sh 1`, chạy lại giống hệt từng byte). AC17 (giao diện) kiểm bằng chơi thật, xem `docs/proof/phase-1/manual-play.md` + ảnh.
+- Chưa đạt / chưa kiểm: (liệt kê các mục "Chưa kiểm" trong manual-play.md). Giới hạn đã biết: đèn đặt sát mép đảo thì Bóng Mực có thể đứng cách đèn < 5 m (ưu tiên kẹp đảo, đã ghi trong giả định).
+- AI sai ở đâu: đoán sai ngưỡng test nhảy; reviewer làm hỏng file bằng chứng; ghi giấy phép theo trí nhớ; hiểu "Mây" là nhân vật trang trí; báo xong giao diện mà chưa xem. Chi tiết: `docs/notes/ai-log.md`.
+- Đã chỉnh harness: reviewer không ghi `docs/proof/`; thêm `npm run shot` + quy tắc tự Read ảnh sau mọi thay đổi giao diện.
+- Token: gói Claude Pro không hiện số token; theo `/usage` lúc 23:54 Phase 1 dùng **~33% hạn mức phiên 5 giờ** (≈ **2% hạn mức tuần**). Phần tốn nhiều nhất: Việc 1 (logic + 44 test, Opus) và 3 vòng sửa giao diện (Việc 3, 3b, 3c) do agent chưa nhìn thấy game. Tiết kiệm bằng: giả định + tiêu chí nghiệm thu viết trước, plan mode, chia việc nhỏ, Opus cho logic và Sonnet cho việc nhẹ, tự chạy lệnh kiểm chứng ở terminal riêng. Bài học: nếu có `npm run shot` từ đầu thì đã bớt được 2 vòng sửa giao diện.
+- Cần chỉnh cho phase sau: prompt giao diện phải nói rõ tên nhân vật; kiểm bằng mắt ngay sau mỗi thay đổi giao diện.
