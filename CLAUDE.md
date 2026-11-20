@@ -22,4 +22,5 @@ Game 3D (TypeScript + Three.js + Vite). Bài lab chấm tự động qua chế �
 - Không viết test luôn đạt, không sửa tay file output trong `docs/proof/`. Bằng chứng phải sinh ra bằng script.
 - Phần sáng tạo thêm phải tắt khi chạy headless.
 - Commit nhỏ, mỗi commit một việc. Không commit `.env`, key, token.
+- Subagent `reviewer` chỉ đọc: không chạy `scripts/proof.sh`, không ghi vào `docs/proof/`; mọi output thử nghiệm ghi vào `/tmp`. Chỉ agent chính chạy `scripts/proof.sh` (không đặt `SKIP_TEST` khi tạo bằng chứng thật).
 - Trước khi báo xong: chạy `npm test` và `npx tsc --noEmit`.
