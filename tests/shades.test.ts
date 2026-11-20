@@ -147,4 +147,23 @@ describe('Bóng Mực', () => {
     expect(spawned).toEqual([{ type: 'event', tick: 2700, name: 'shade_spawned', data: { id: 'S6' } }]);
     expect(r.snap(5401).shades).toHaveLength(6);
   });
+
+  it('đẩy ra khỏi vùng đèn không đưa shade ra ngoài đảo: đèn (36,0,0), shade (39,0,0)', () => {
+    const r = run({
+      scenario: quiet({
+        player: { pos: [-30, 0, 0] },
+        lanterns: [{ id: 'L1', pos: [36, 0, 0], lit: true }],
+        shades: [{ pos: [39, 0, 0] }],
+      }),
+      ticks: 5,
+    });
+    // Trước khi sửa: đẩy tới (41,1,0) — cách tâm đảo 41 m.
+    for (let t = 1; t <= 5; t++) {
+      const [x, y, z] = r.snap(t).shades[0].pos;
+      expect(Math.hypot(x, z)).toBeLessThanOrEqual(40 + 1e-9);
+      expect(y).toBe(1);
+    }
+    // Đảo ưu tiên hơn vùng đèn (hai ràng buộc xung đột ở sát mép): shade dừng ở mép đảo.
+    expect(r.snap(1).shades[0].pos).toEqual([40, 1, 0]);
+  });
 });

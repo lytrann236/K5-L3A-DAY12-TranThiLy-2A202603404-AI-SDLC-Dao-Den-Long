@@ -240,6 +240,8 @@ function moveShades(s: GameState): void {
           const [dx, dz] = dirXZ(l.pos, sh.pos);
           sh.pos[0] = l.pos[0] + dx * TUNING.safe_radius;
           sh.pos[2] = l.pos[2] + dz * TUNING.safe_radius;
+          // Sau mọi lần đẩy đều kẹp vào đảo (đảo ưu tiên hơn vùng đèn nếu hai ràng buộc xung đột).
+          clampToDisk(sh.pos, ISLAND_RADIUS);
           moved = true;
         }
       }
