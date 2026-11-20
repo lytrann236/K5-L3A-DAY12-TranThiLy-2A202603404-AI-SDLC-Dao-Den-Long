@@ -1,60 +1,54 @@
-import './style.css'
-import heroImg from './assets/hero.png'
-import typescriptLogo from './assets/typescript.svg'
-import viteLogo from './assets/vite.svg'
-import { setupCounter } from './counter.ts'
+import './style.css';
+import { createHud } from './render/hud';
+import { createInput } from './render/input';
+import { createWorld } from './render/scene';
+import { advance } from './render/timestep';
+import { step } from './sim/step';
+import { createGame } from './sim/world';
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${typescriptLogo}" class="framework" alt="TypeScript logo"/>
-    <img src="${viteLogo}" class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.ts</code> and save to test <code>HMR</code></p>
-  </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
+/** ?seed=<số nguyên> cố định seed; không có thì ngẫu nhiên (Math.random chỉ dùng ở đây, không trong sim). */
+const urlSeedRaw = new URLSearchParams(location.search).get('seed');
+const urlSeed = urlSeedRaw !== null && /^-?\d+$/.test(urlSeedRaw) ? Number(urlSeedRaw) : null;
+const pickSeed = () => urlSeed ?? Math.floor(Math.random() * 2 ** 31);
 
-<div class="ticks"></div>
+const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
+const world = createWorld(canvas);
+const input = createInput(canvas);
+const hud = createHud(
+  document.querySelector<HTMLElement>('#hud')!,
+  document.querySelector<HTMLElement>('#overlay')!,
+);
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src="${viteLogo}" alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://www.typescriptlang.org" target="_blank">
-          <img class="button-icon" src="${typescriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
+let seed = pickSeed();
+let state = createGame(seed);
+let accMs = 0;
 
-<div class="ticks"></div>
-<section id="spacer"></section>
-`
+window.addEventListener('resize', () => world.resize());
+world.resize();
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+let last = performance.now();
+function frame(now: number): void {
+  const dtMs = now - last;
+  last = now;
+  input.update(dtMs / 1000);
+
+  if (input.consumeRestart()) {
+    seed = pickSeed(); // có ?seed= thì giữ nguyên, không thì seed ngẫu nhiên mới
+    state = createGame(seed);
+    accMs = 0;
+    input.reset();
+  }
+
+  if (state.status === 'playing') {
+    const r = advance(accMs, dtMs);
+    accMs = r.accMs;
+    for (let i = 0; i < r.ticks && state.status === 'playing'; i++) {
+      step(state, input.sample()); // CHÍNH logic của src/sim, không có logic game lần hai
+    }
+  }
+
+  world.render(state, now / 1000, input.yawDeg, input.pitchDeg);
+  hud.update(state, seed);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
