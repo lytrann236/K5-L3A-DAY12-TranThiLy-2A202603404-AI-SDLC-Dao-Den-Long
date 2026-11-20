@@ -107,10 +107,10 @@ describe('flames = 0 trong scenario', () => {
 });
 
 describe('AC2-16: thắng/thua xét cuối tick (bước 11)', () => {
-  const lastLamp = (flames: number) =>
+  const lastLamp = (flames: number, shades: { pos: [number, number, number] }[] = []) =>
     quiet({
       player: { carried: 10, flames },
-      shades: [{ pos: [0.5, 0, 0] }],
+      shades,
       lanterns: [
         { id: 'L1', lit: true },
         { id: 'L2', lit: true },
@@ -120,25 +120,24 @@ describe('AC2-16: thắng/thua xét cuối tick (bước 11)', () => {
       ],
     });
 
-  it('thắp đèn cuối và mất ngọn lửa cuối cùng tick → thua no_flames (hết lửa luôn thua)', () => {
-    const r = run({ scenario: lastLamp(1), frames: [{ tick: 0, interact: true }], ticks: 10 });
-    expect(r.events.map((e) => [e.tick, e.name])).toEqual([
-      [1, 'deposit'],
-      [1, 'lantern_lit'],
-      [1, 'player_hit'],
-      [1, 'game_over'],
+  it('đủ đèn nhưng hết lửa cùng tick → thua no_flames (hết lửa luôn thua)', () => {
+    const r = run({ scenario: lastLamp(0), frames: [{ tick: 0, interact: true }], ticks: 10 });
+    expect(r.events.map((e) => [e.tick, e.name, e.data])).toEqual([
+      [1, 'deposit', { lantern_id: 'L5', amount: 10, deposited: 10 }],
+      [1, 'lantern_lit', { lantern_id: 'L5' }],
+      [1, 'game_over', { result: 'lost', reason: 'no_flames' }],
     ]);
-    expect(r.events.at(-1)!.data).toEqual({ result: 'lost', reason: 'no_flames' });
     // Không có thưởng thắng: 100 (nạp) + 100 (thắp).
     expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'lost', score: 200 });
   });
 
-  it('bị đánh cùng tick thắp đèn cuối nhưng còn lửa → vẫn thắng, thưởng tính theo lửa SAU khi bị đánh', () => {
-    // Phase 1 thắng ở bước 5 nên va chạm cùng tick không xảy ra; v1.1 xét ở bước 11.
-    const r = run({ scenario: lastLamp(3), frames: [{ tick: 0, interact: true }], ticks: 10 });
-    expect(r.events.map((e) => e.name)).toEqual(['deposit', 'lantern_lit', 'player_hit', 'game_over']);
+  it('bóng sát Mây lúc thắp đèn cuối: bước 6 đẩy bóng ra trước bước 9 → không hit, thắng đủ 3 lửa', () => {
+    // Phase 1 thắng ở bước 5 nên va chạm cùng tick không xảy ra; v1.1 xét ở bước 11,
+    // các bước 6–10 vẫn chạy (vùng an toàn của đèn vừa thắp bảo vệ Mây).
+    const r = run({ scenario: lastLamp(3, [{ pos: [0.5, 0, 0] }]), frames: [{ tick: 0, interact: true }], ticks: 10 });
+    expect(r.events.map((e) => e.name)).toEqual(['deposit', 'lantern_lit', 'game_over']);
     expect(r.events.at(-1)!.data).toEqual({ result: 'won', reason: 'all_lit' });
-    // 100 + 100 + 2 × 299 + 50 × 2 = 898.
-    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'won', score: 898 });
+    expect(r.snap(1).shades[0].pos).not.toEqual([0.5, 1, 0]); // đã bị đẩy ở bước 6
+    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'won', score: 948 });
   });
 });

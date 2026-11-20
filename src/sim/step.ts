@@ -1,6 +1,6 @@
 import { TICK_RATE } from './constants';
 import { TUNING } from './contract';
-import { interact } from './lanterns';
+import { interact, tickSafeTimers, updateSafeZones } from './lanterns';
 import { pickupMotes, spawnMotes, tickMoteTtl } from './motes';
 import { movePlayer, tickPlayerTimers } from './player';
 import { pulse } from './pulse';
@@ -49,6 +49,7 @@ export function step(s: GameState, input: InputState): SimEvent[] {
   // 2. Giảm các bộ đếm.
   tickPlayerTimers(s);
   tickShadeTimers(s);
+  tickSafeTimers(s);
   tickMoteTtl(s);
   // 3. Di chuyển Mây (nhảy, lướt) rồi kiểm tra rơi khỏi đảo.
   movePlayer(s, input, edges.jump, edges.dash, events);
@@ -56,6 +57,8 @@ export function step(s: GameState, input: InputState): SimEvent[] {
   pickupMotes(s, events);
   // 5. Tương tác với đèn.
   interact(s, edges.interact, events);
+  // 6. Cập nhật vùng an toàn.
+  updateSafeZones(s);
   // 7. Tỏa Sáng.
   pulse(s, edges.pulse, events);
   // 8. Bóng Mực di chuyển.

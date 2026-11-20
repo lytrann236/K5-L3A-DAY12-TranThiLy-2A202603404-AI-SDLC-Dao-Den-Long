@@ -28,28 +28,29 @@ function tick(s: GameState, btn: Partial<InputState>): string | null {
   return failureMessage(prev, input, events, s);
 }
 
+// Sửa theo phase-2.md mục 2: pulse_cost 3 ("Cần ≥ 3"), hồi chiêu 3 s = 180 tick.
 describe('Thông báo khi bấm không đủ điều kiện', () => {
-  it('tỏa sáng khi carried < 2 → "Cần ≥ 2 đom đóm để tỏa sáng"', () => {
-    const s = createGame(1, quiet({ player: { carried: 1 } }));
-    expect(tick(s, { pulse: true })).toBe('Cần ≥ 2 đom đóm để tỏa sáng');
-    expect(MSG_PULSE_NEED_MOTES).toBe('Cần ≥ 2 đom đóm để tỏa sáng');
-    expect(s.player.carried).toBe(1); // sim không đổi
+  it('tỏa sáng khi carried < 3 → "Cần ≥ 3 đom đóm để tỏa sáng"', () => {
+    const s = createGame(1, quiet({ player: { carried: 2 } }));
+    expect(tick(s, { pulse: true })).toBe('Cần ≥ 3 đom đóm để tỏa sáng');
+    expect(MSG_PULSE_NEED_MOTES).toBe('Cần ≥ 3 đom đóm để tỏa sáng');
+    expect(s.player.carried).toBe(2); // sim không đổi
   });
 
-  it('tỏa sáng khi đang cooldown → "Đang hồi chiêu"; hết cooldown thì bấm được', () => {
+  it('tỏa sáng khi đang cooldown → "Đang hồi chiêu"; hết cooldown (180 tick) thì bấm được', () => {
     const s = createGame(1, quiet({ player: { carried: 6 } }));
     expect(tick(s, { pulse: true })).toBeNull(); // thành công
     expect(tick(s, { pulse: false })).toBeNull();
     expect(tick(s, { pulse: true })).toBe(MSG_PULSE_COOLDOWN);
-    expect(s.player.carried).toBe(4);
-    for (let i = 0; i < 100; i++) tick(s, { pulse: false });
+    expect(s.player.carried).toBe(3);
+    for (let i = 0; i < 180; i++) tick(s, { pulse: false });
     expect(tick(s, { pulse: true })).toBeNull();
-    expect(s.player.carried).toBe(2);
+    expect(s.player.carried).toBe(0);
   });
 
   it('cooldown được báo trước khi thiếu đom đóm (cùng thứ tự với sim)', () => {
-    const s = createGame(1, quiet({ player: { carried: 2 } }));
-    expect(tick(s, { pulse: true })).toBeNull(); // carried 2 → 0, bắt đầu cooldown
+    const s = createGame(1, quiet({ player: { carried: 3 } }));
+    expect(tick(s, { pulse: true })).toBeNull(); // carried 3 → 0, bắt đầu cooldown
     expect(tick(s, { pulse: false })).toBeNull();
     expect(tick(s, { pulse: true })).toBe(MSG_PULSE_COOLDOWN);
   });
@@ -75,9 +76,9 @@ describe('Thông báo khi bấm không đủ điều kiện', () => {
   });
 
   it('bấm hợp lệ thì không có thông báo (nạp đèn, tỏa sáng)', () => {
-    const s = createGame(1, quiet({ player: { pos: [0, 0, 24], carried: 7 } }));
-    expect(tick(s, { interact: true })).toBeNull(); // deposit 5 + lantern_lit
-    const s2 = createGame(1, quiet({ player: { carried: 2 } }));
+    const s = createGame(1, quiet({ player: { pos: [0, 0, 24], carried: 12 } }));
+    expect(tick(s, { interact: true })).toBeNull(); // deposit 10 + lantern_lit
+    const s2 = createGame(1, quiet({ player: { carried: 3 } }));
     expect(tick(s2, { pulse: true })).toBeNull();
   });
 
