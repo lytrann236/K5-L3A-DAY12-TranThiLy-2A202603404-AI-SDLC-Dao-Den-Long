@@ -12,6 +12,9 @@ export const ISLAND_RADIUS = 40;
 export const JUMP_SPEED = 7;
 export const GRAVITY = 20;
 
+/** Bùa Gió: tốc độ chạy khi có hiệu lực (m/s). */
+export const CHARM_RUN_SPEED = 7.2;
+
 /** Nhặt đom đóm / bùa: chênh cao tối đa giữa chân Mây và mặt đất nơi đặt (m). */
 export const PICKUP_MAX_DY = 1.5;
 
