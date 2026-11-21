@@ -1,13 +1,13 @@
 ---
 name: verify-proof
-description: Chạy các scenario headless (Đêm 1, 2, 3 — Test Contract v1.1) và lưu bằng chứng của một phase vào docs/proof/phase-N, kèm đo hiệu năng 21.600 tick. Dùng khi cần kiểm chứng hành vi game hoặc cập nhật bằng chứng trước khi gắn tag.
+description: Chạy các scenario headless (Đêm 1, 2, 3 — Test Contract v1.2) và lưu bằng chứng của một phase vào docs/proof/phase-N, kèm đo hiệu năng 21.600 tick. Dùng khi cần kiểm chứng hành vi game hoặc cập nhật bằng chứng trước khi gắn tag.
 ---
 
 # Kiểm chứng và lưu bằng chứng
 
 Chỉ agent chính chạy skill này. Subagent `reviewer` không chạy `scripts/proof.sh` và không ghi vào `docs/proof/`. Khi tạo bằng chứng thật thì không đặt `SKIP_TEST`.
 
-1. **Contract**: kiểm tra `game.contract.json` có `contract_version` = "1.1" và tuning khớp số chuẩn trong `docs/notes/phase-2.md` mục 1.1. Lệnh soát: `node -e "const c=require('./game.contract.json');console.log(c.contract_version,JSON.stringify(c.tuning))"`. Sai thì dừng lại và báo.
+1. **Contract**: kiểm tra `game.contract.json` có `contract_version` = "1.2" và tuning khớp số chuẩn trong `docs/notes/ticket-03.md` mục 7 (luật cũ: `docs/notes/phase-2.md` mục 1.1). Lệnh soát: `node -e "const c=require('./game.contract.json');console.log(c.contract_version,JSON.stringify(c.tuning))"`. Sai thì dừng lại và báo.
 2. **Test**: `npm test 2>&1 | tee docs/proof/phase-N/npm-test.txt` và `npx tsc --noEmit`.
 3. **Scenario**: chạy `scripts/proof.sh N`. Nếu script chưa hỗ trợ phase này thì sửa script. Script phải:
    - Đọc `scenarios/manifest.txt`. Mỗi dòng ghi rõ `--night` (1, 2 hoặc 3) và AC (`AC2-xx` cho Phase 2). Với mỗi `scenarios/*.json`, chạy headless (kèm file `inputs/` tương ứng nếu có) và ghi `docs/proof/phase-N/<tên>.jsonl`.

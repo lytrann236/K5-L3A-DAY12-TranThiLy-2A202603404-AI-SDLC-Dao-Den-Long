@@ -1,6 +1,6 @@
 # Đảo Đèn Lồng — hướng dẫn cho agent
 
-Game 3D (TypeScript + Three.js + Vite). Bài lab chấm tự động qua chế độ headless theo Test Contract. **Đang ở Phase 2** (Ticket-02 "Ba hòn đảo", Test Contract **v1.1**, 3 Đêm).
+Game 3D (TypeScript + Three.js + Vite). Bài lab chấm tự động qua chế độ headless theo Test Contract. **Đang ở Phase 3** (Ticket-03 "Đèn cạn dầu", Test Contract **v1.2**, 3 Đêm).
 
 ## Lệnh
 - Cài: `npm ci`
@@ -19,11 +19,11 @@ Game 3D (TypeScript + Three.js + Vite). Bài lab chấm tự động qua chế �
 
 ## Quy tắc bắt buộc
 - Tuning chỉ đọc từ `game.contract.json` (không hard-code số trùng lặp).
-- Yêu cầu gốc: `docs/notes/ticket-02.md` — BẮT BUỘC chính xác (số chuẩn, bản đồ chuẩn, Test Contract v1.1). Phase 1 (`docs/notes/phase-1.md`, `docs/notes/test-contract-v1.md`) chỉ để tham chiếu và regression.
-- Đặc tả chi tiết, giả định và tiêu chí AC2-xx: `docs/notes/phase-2.md`. Làm đúng theo đó; nếu thấy mơ hồ thì HỎI, không tự bịa yêu cầu. Giả định mới chốt phải ghi vào phase-2.md.
-- `game.contract.json` là `contract_version` "1.1": `player_speed` 6, `lantern_cost` 10, `pulse_cost` 3, `pulse_radius` 5, `pulse_cooldown_s` 3, `safe_radius` 6, `fall_enabled` true, `dash_*`, `night1/2/3_duration_s`, `score.per_mote` = mỗi đom đóm NẠP. Hằng số không có trong contract nằm ở `src/sim/constants.ts`.
-- Thứ tự xử lý một tick (bắt buộc, chi tiết ở phase-2.md mục 4.3): 1 input + pause → 2 giảm bộ đếm → 3 di chuyển Mây + kiểm tra rơi → 4 nhặt đom đóm/bùa → 5 đèn → 6 vùng an toàn → 7 Tỏa Sáng → 8 Bóng Mực + Gió Lạc di chuyển → 9 chạm (Gió Lạc cướp trước, Bóng Mực theo id) → 10 sinh theo lịch → 11 thắng/thua → 12 snapshot. Khi pause: `tick` tăng, `sim_tick` và mọi bộ đếm đứng yên.
-- Trạng thái Bóng Mực chỉ dùng: `spawning`, `wander`, `chase`, `recoil`, `stunned`.
+- Yêu cầu gốc: `docs/notes/ticket-03.md` (Phase 3, Test Contract v1.2) cùng các luật không bị thay thế của `docs/notes/ticket-02.md` — BẮT BUỘC chính xác. Phase 1–2 (`docs/notes/phase-1.md`, `docs/notes/test-contract-v1.md`, `docs/notes/phase-2.md`) để tham chiếu và regression.
+- Đặc tả chi tiết, giả định và tiêu chí AC3-xx: `docs/notes/phase-3.md` (luật cũ giữ nguyên: `docs/notes/phase-2.md`). Quyết định thiết kế: `docs/adr/`. Thay đổi phá vỡ: `CHANGELOG.md`. Làm đúng theo đó; nếu thấy mơ hồ thì HỎI, không tự bịa yêu cầu. Giả định mới chốt phải ghi vào phase-3.md.
+- `game.contract.json` là `contract_version` "1.2": `player_speed` 6, `lantern_cost` 10, `relight_cost` 5, `pulse_cost` 3, `pulse_radius` 5, `pulse_cooldown_s` 3, `safe_radius` 6, `fall_enabled` true, `dash_*`, `night1/2/3_duration_s` 240/270/300, `fuel_max` 100, `fuel_decay_per_s` 1.0, `fuel_per_mote` 10, `drain_per_s` 5, `low_fuel_threshold` 30, `win_ratio` 0.6, `capacity_max` 20, `score.per_mote` 5 = mỗi đom đóm NẠP (thắp / thắp lại / châm). Dầu tính bằng số nguyên đơn vị 1/60 (`src/sim/fuel.ts`). Hằng số không có trong contract nằm ở `src/sim/constants.ts`.
+- Thứ tự xử lý một tick (bắt buộc, chi tiết ở phase-2.md mục 4.3 + phase-3.md mục 3): 1 input + pause → 2 giảm bộ đếm + trừ dầu (hao + hút), rồi đèn `fuel ≤ 0` tắt → 3 di chuyển Mây + kiểm tra rơi → 4 nhặt đom đóm/bùa → 5 đèn → 6 vùng an toàn → 7 Tỏa Sáng → 8 Bóng Mực + Gió Lạc di chuyển → 9 chạm (Gió Lạc cướp trước, Bóng Mực theo id) → 10 sinh theo lịch → 11 thắng/thua (chỉ ở bình minh; hết lửa luôn thua trước) → 12 snapshot. Khi pause: `tick` tăng, `sim_tick` và mọi bộ đếm đứng yên.
+- Trạng thái Bóng Mực chỉ dùng: `spawning`, `wander`, `chase`, `recoil`, `stunned`, `drain`.
 - Đầu ra headless phải đúng định dạng Test Contract (snapshot / event / end), tọa độ làm tròn 3 chữ số, tất định theo seed.
 - Không viết test luôn đạt, không sửa tay file output trong `docs/proof/`. Bằng chứng phải sinh ra bằng script.
 - Phần sáng tạo thêm phải tắt khi chạy headless.
