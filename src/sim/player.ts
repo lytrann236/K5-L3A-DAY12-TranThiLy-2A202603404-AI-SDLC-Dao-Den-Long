@@ -132,7 +132,14 @@ export function movePlayer(
   const nz = p.pos[2] + p.vel[2] * DT;
   if (map.resolveMove) {
     // Đêm nhiều tầng: vách chặn chỗ có mặt đất cao hơn chân (cao nhất trong tick) quá STEP_HEIGHT.
-    [p.pos[0], p.pos[2]] = map.resolveMove(p.pos[0], p.pos[2], nx, nz, Math.max(y0, p.pos[1]) + STEP_HEIGHT);
+    const [x, z] = map.resolveMove(p.pos[0], p.pos[2], nx, nz, Math.max(y0, p.pos[1]) + STEP_HEIGHT);
+    if (x !== nx || z !== nz) {
+      // Bị vách chặn: bỏ thành phần đi vào vách, `vel` = vận tốc thực sau khi trượt.
+      p.vel[0] = (x - p.pos[0]) / DT;
+      p.vel[2] = (z - p.pos[2]) / DT;
+    }
+    p.pos[0] = x;
+    p.pos[2] = z;
   } else {
     p.pos[0] = nx;
     p.pos[2] = nz;
