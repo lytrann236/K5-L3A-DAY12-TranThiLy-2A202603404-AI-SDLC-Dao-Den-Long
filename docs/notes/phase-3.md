@@ -104,3 +104,10 @@ Mỗi chỗ sửa trong `tests/` có comment `Phase 3:` ghi lý do. Không có t
 ## 6. Bằng chứng
 
 `scripts/proof.sh 3` → `docs/proof/phase-3/` (README, JSONL mọi scenario, `npm-test.txt`, `perf.txt`), ảnh `npm run shot -- docs/proof/phase-3/screenshots` (`11-fuel-bars.png`, `12-fuel-blink.png`). Hiệu năng: với seed 1 không scenario, Đêm kết thúc ở bình minh trước 21.600 tick (14.400 / 16.200 / 9.431 tick); chạy thêm 21.600 tick đầy đủ (time_left_s 400, bất tử, có drain) ≈ 0.4 s.
+
+## Đánh giá Phase 3
+- Đạt: nhiên liệu đèn (hao, châm dầu, tắt, thắp lại 5), Bóng Mực drain (hút cộng dồn, chuyển trạng thái), vùng an toàn mất khi fuel < 30, luật thắng dawn_survived (≥ ceil(0.6 × tổng đèn)), sức chứa tăng dần, điểm mới, Contract v1.2. 242/242 test, 15 scenario ac3-*, mọi scenario cũ vẫn đạt. ADR: `docs/adr/0001-nhien-lieu-den-va-luat-thang.md`. CHANGELOG có Breaking changes.
+- Test cũ bị thay: sửa kèm comment "Phase 3:", không skip test nào.
+- Chưa làm: chế độ mù màu (hết thời gian).
+- Hỏng phase trước?: Bóng Mực wander không còn đứng yên (theo ticket "đi về đèn tắt gần nhất"), đã ghi trong ADR; test Phase 2 liên quan đã cập nhật.
+- Token: (điền sau khi chạy /usage)

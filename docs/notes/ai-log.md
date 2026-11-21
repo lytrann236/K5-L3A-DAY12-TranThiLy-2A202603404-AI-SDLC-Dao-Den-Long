@@ -41,6 +41,12 @@ Cách xem token: lệnh `/usage` trong Claude Code (gói Pro hiện % hạn mứ
 
 **Token Phase 2:** theo `/usage` lúc 10:32: hạn mức tuần tăng từ 2% (cuối Phase 1) lên **13%** → Phase 2 dùng **~11% hạn mức tuần** (phiên hiện tại 41%). Tốn nhiều nhất: Việc 2–4 (Opus, sim 3 Đêm) và vòng lặp hook 9 lần ở Việc 1.
 
+## Phase 3
+
+| Thời điểm | Việc giao cho AI | Kết quả | AI sai ở đâu / tôi phát hiện thế nào | Chỉnh harness |
+|---|---|---|---|---|
+| 10:35 | Toàn bộ Phase 3 trong 1 prompt "không hỏi lại": spec phase-3.md, ADR, CHANGELOG, contract v1.2, sim nhiên liệu + drain + luật thắng mới, sửa test cũ, UI thanh dầu. Opus | 9 commit, 242/242 test, 15 scenario mới, mọi scenario cũ đạt, Claude tự chụp và xem ảnh thanh dầu | Ticket viết "đi về đèn tắt gần nhất **như trước**" nhưng Phase 2 của tôi wander đứng yên → chọn theo ticket mới, ghi trong ADR. Claude tự thêm `?demo=fuel` (chỉ trình duyệt) để chụp ảnh | CLAUDE.md + skill trỏ sang phase-3.md, v1.2 |
+
 ## Cách tiết kiệm token
 - Viết giả định và tiêu chí nghiệm thu **trước**, agent ít phải đoán và ít hỏi lại.
 - Plan mode để duyệt kế hoạch trước khi cho sửa code.
