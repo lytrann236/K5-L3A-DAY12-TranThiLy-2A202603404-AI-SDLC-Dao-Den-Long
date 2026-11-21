@@ -8,7 +8,8 @@
 # KHÔNG sửa tay các file trong docs/proof/.
 N="${1:?dùng: scripts/proof.sh <N>}"
 cd "$(dirname "$0")/.." || exit 1
-OUT="docs/proof/phase-$N"
+# PROOF_OUT=<thư mục> để chạy thử ra chỗ khác (vd. /tmp), không đụng docs/proof/.
+OUT="${PROOF_OUT:-docs/proof/phase-$N}"
 MANIFEST="scenarios/manifest.txt"
 CLI=(npx tsx src/headless/cli.ts)
 mkdir -p "$OUT"
@@ -40,11 +41,11 @@ check_exp() { # $1=file $2=kỳ vọng ; in ra "ok" hoặc lý do
 }
 
 SEEN=" "
-while IFS='|' read -r name ac seed ticks every want desc exps; do
+while IFS='|' read -r name ac seed night ticks every want desc exps; do
   [[ -z "$name" || "$name" == \#* ]] && continue
   SEEN="$SEEN$name "
   sc="scenarios/$name.json"
-  args=(--seed "$seed" --night 1 --ticks "$ticks" --snapshot-every "$every")
+  args=(--seed "$seed" --night "$night" --ticks "$ticks" --snapshot-every "$every")
   [ -f "$sc" ] && args+=(--scenario "$sc")
   [ -f "inputs/$name.json" ] && args+=(--inputs "inputs/$name.json")
   evid="$name.jsonl"; [ "$want" != 0 ] && evid="$name.stderr.txt"
@@ -79,8 +80,8 @@ while IFS='|' read -r name ac seed ticks every want desc exps; do
   if [ ${#problems[@]} -eq 0 ]; then res="ĐẠT"; else res="KHÔNG ĐẠT"; FAILS=$((FAILS+1)); fi
   rm -f "$TMP"/a.* "$TMP"/b.* "$TMP"/c.*
   note=""; [ ${#problems[@]} -gt 0 ] && note=" — $(IFS=';'; echo "${problems[*]}")"
-  ROWS+="| $ac | Scenario \`scenarios/$name.json\`$( [ -f "inputs/$name.json" ] && echo " + \`inputs/$name.json\`"): $desc. Tất định (chạy 2 lần, diff): $det | [\`$evid\`]($evid) | $res$note |"$'\n'
-  SUMMARY+="$(printf '%-28s %-5s %-10s %s' "$name" "$ac" "$res" "$(echo "$exps" | sed 's/@@/ ; /g' | cut -c1-70)")"$'\n'
+  ROWS+="| $ac | Đêm $night — scenario \`scenarios/$name.json\`$( [ -f "inputs/$name.json" ] && echo " + \`inputs/$name.json\`"): $desc. Tất định (chạy 2 lần, diff): $det | [\`$evid\`]($evid) | $res$note |"$'\n'
+  SUMMARY+="$(printf '%-28s N%s %-5s %-10s %s' "$name" "$night" "$ac" "$res" "$(echo "$exps" | sed 's/@@/ ; /g' | cut -c1-70)")"$'\n'
   [ ${#problems[@]} -gt 0 ] && SUMMARY+="    ↳ ${problems[*]}"$'\n'
 done < "$MANIFEST"
 
