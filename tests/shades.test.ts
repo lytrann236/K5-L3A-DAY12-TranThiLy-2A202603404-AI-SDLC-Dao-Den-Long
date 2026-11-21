@@ -4,8 +4,12 @@ import { getMap } from '../src/sim/maps';
 import type { Vec3 } from '../src/sim/types';
 import { quiet, run, ticksOf } from './helpers';
 
-const STATES = new Set(['spawning', 'wander', 'chase', 'recoil', 'stunned']);
+// Phase 3: Test Contract v1.2 thêm trạng thái `drain` (ticket-03 mục 7).
+const STATES = new Set(['spawning', 'wander', 'chase', 'recoil', 'stunned', 'drain']);
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
+
+/** Phase 3: cả 5 đèn Đêm 1 sáng (fuel 100) → wander không có mục tiêu. */
+const ALL_LIT = ['L1', 'L2', 'L3', 'L4', 'L5'].map((id) => ({ id, lit: true }));
 
 describe('Bóng Mực: trạng thái và di chuyển (AC2-10)', () => {
   // Sửa theo phase-2.md mục 2: 3.5 → 4.0 m/s và chỉ đuổi khi ≤ 12 m (Phase 1 luôn đuổi từ 20 m).
@@ -16,17 +20,19 @@ describe('Bóng Mực: trạng thái và di chuyển (AC2-10)', () => {
     expect(r.snap(60).shades[0].pos).toEqual([6, 1, 0]);
   });
 
-  it('phát hiện đúng 12 m thì đuổi; 12.01 m thì đứng yên (wander)', () => {
+  // Phase 3: wander đi về đèn tắt / đèn yếu (ticket-03 mục 2). Thắp sẵn cả 5 đèn (fuel ≥ 30, không
+  // có đèn tắt) để wander không có mục tiêu → đứng yên như Phase 2, giữ nguyên ý test phát hiện.
+  it('phát hiện đúng 12 m thì đuổi; 12.01 m thì đứng yên (wander, mọi đèn sáng)', () => {
     const at12 = run({ scenario: quiet({ shades: [{ pos: [12, 0, 0] }] }), ticks: 1 });
     expect(at12.snap(1).shades[0].state).toBe('chase');
-    const far = run({ scenario: quiet({ shades: [{ pos: [12.01, 0, 0] }] }), ticks: 60 });
+    const far = run({ scenario: quiet({ shades: [{ pos: [12.01, 0, 0] }], lanterns: ALL_LIT }), ticks: 60 });
     expect(far.snap(60).shades[0]).toEqual({ id: 'S1', pos: [12.01, 1, 0], state: 'wander' });
   });
 
   it('chase → wander khi Mây cách > 18 m (Mây chạy 6 m/s nhanh hơn bóng 4 m/s)', () => {
     const r = run({
       // 11.05 để biên 18 m không rơi đúng số nguyên (tránh so sánh số thực ngay biên).
-      scenario: quiet({ shades: [{ pos: [11.05, 0, 0] }] }),
+      scenario: quiet({ shades: [{ pos: [11.05, 0, 0] }], lanterns: ALL_LIT }), // Phase 3: xem test trên
       frames: [{ tick: 0, move: [-1, 0] }],
       ticks: 300,
     });
@@ -37,7 +43,7 @@ describe('Bóng Mực: trạng thái và di chuyển (AC2-10)', () => {
     const gapNow = distXZ(r.snap(t).player.pos, r.snap(t).shades[0].pos);
     expect(gapNow).toBeGreaterThan(18);
     expect(distXZ(r.snap(t - 1).player.pos, r.snap(t - 1).shades[0].pos)).toBeLessThanOrEqual(18 + 0.1);
-    expect(r.snap(300).shades[0].pos).toEqual(r.snap(t).shades[0].pos); // wander đứng yên
+    expect(r.snap(300).shades[0].pos).toEqual(r.snap(t).shades[0].pos); // wander không mục tiêu → đứng yên
   });
 
   it('spawning 30 tick: đứng yên, không gây hit; hết thì wander rồi xét phát hiện ngay', () => {
@@ -218,9 +224,11 @@ describe('Bóng Mực: lịch sinh (AC2-12, AC2-20)', () => {
     const s300 = r.snap(300).shades;
     expect(s300.map((s) => s.state)).toEqual(['spawning', 'spawning']);
     expect(s300[0].pos).not.toEqual(s300[1].pos);
-    for (const s of r.snap(2220).shades) {
-      expect(ptKeys.has(`${s.pos[0]},${s.pos[2]}`)).toBe(true);
-      expect(s.pos[1]).toBe(1);
+    // Phase 3: wander giờ di chuyển về đèn → kiểm vị trí mỗi con ở đúng tick nó sinh ra.
+    for (const e of r.events.filter((x) => x.name === 'shade_spawned')) {
+      const sh = r.snap(e.tick).shades.find((x) => x.id === e.data.id)!;
+      expect(ptKeys.has(`${sh.pos[0]},${sh.pos[2]}`)).toBe(true);
+      expect(sh.pos[1]).toBe(1);
     }
     expect(r.snap(329).shades[0].state).toBe('spawning');
     expect(r.snap(330).shades[0].state).toBe('wander');

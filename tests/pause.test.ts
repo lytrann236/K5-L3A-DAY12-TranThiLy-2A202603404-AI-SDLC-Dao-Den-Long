@@ -21,7 +21,8 @@ describe('Tạm dừng (AC2-19)', () => {
       { type: 'event', tick: 21, name: 'resumed', data: {} },
     ]);
     expect(r.snap(10)).toMatchObject({ tick: 10, sim_tick: 10, state: 'playing' });
-    expect(r.snap(11)).toMatchObject({ tick: 11, sim_tick: 10, state: 'paused', time_left_s: 299.833 });
+    // Phase 3: thời lượng Đêm 1/2/3 300/330/360 → 240/270/300 (ticket-03 mục 3, contract v1.2).
+    expect(r.snap(11)).toMatchObject({ tick: 11, sim_tick: 10, state: 'paused', time_left_s: 239.833 });
     expect(r.snap(11).player.pos).toEqual([0, 0, 1]);
     expect(r.snap(20)).toMatchObject({ tick: 20, sim_tick: 10, state: 'paused' });
     expect(r.snap(20).player.pos).toEqual([0, 0, 1]);

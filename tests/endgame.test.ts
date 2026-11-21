@@ -4,10 +4,11 @@ import { quiet, run } from './helpers';
 
 describe('Thời gian và kết thúc', () => {
   it('time_left_s = thời lượng − bước/60, làm tròn 3 chữ số', () => {
+    // Phase 3: night1_duration_s 300 → 240 (ticket-03 mục 3).
     const r = run({ scenario: quiet(), ticks: 10 });
-    expect(r.snap(0).time_left_s).toBe(300);
-    expect(r.snap(1).time_left_s).toBe(299.983);
-    expect(r.snap(10).time_left_s).toBe(299.833);
+    expect(r.snap(0).time_left_s).toBe(240);
+    expect(r.snap(1).time_left_s).toBe(239.983);
+    expect(r.snap(10).time_left_s).toBe(239.833);
   });
 
   it('AC12: hết giờ → game_over lost dawn', () => {
@@ -40,45 +41,71 @@ describe('Thời gian và kết thúc', () => {
   });
 });
 
-// Sửa theo phase-2.md mục 2: dựng carried 10 (lantern_cost 10); điểm thêm 10 × 10 đom đóm nạp;
-// thắng xét ở bước 11. Ý nghĩa (thưởng theo tick nguyên, không âm) giữ nguyên.
-describe('Thời gian tính theo tick nguyên và thưởng thắng', () => {
-  const winSetup = (time_left_s: number) =>
-    quiet({
-      time_left_s,
-      player: { carried: 10 },
-      lanterns: [
-        { id: 'L1', lit: true },
-        { id: 'L2', lit: true },
-        { id: 'L3', lit: true },
-        { id: 'L4', lit: true },
-        { id: 'L5', pos: [0, 0, 2] },
-      ],
+// Phase 3: thay toàn bộ nhóm "thưởng thời gian khi thắng all_lit" (ticket-03 mục 3 + 5: không còn
+// thắng sớm, bỏ thưởng thời gian). Ý "tính theo tick nguyên" giữ ở test dawn tick 84 bên dưới.
+describe('AC3-11/14: thắng ở bình minh (dawn_survived), thưởng đèn sáng + lửa', () => {
+  const lit = (ids: string[], fuel?: number) => ids.map((id) => ({ id, lit: true, ...(fuel !== undefined ? { fuel } : {}) }));
+
+  it('Đêm 1: 3/5 đèn sáng ở tick cuối → won dawn_survived; 3 × (50 + floor(99.5)) + 50 × 3 = 597', () => {
+    const r = run({ scenario: quiet({ time_left_s: 0.5, lanterns: lit(['L1', 'L2', 'L3']) }), ticks: 100 });
+    expect(r.events).toEqual([
+      { type: 'event', tick: 30, name: 'game_over', data: { result: 'won', reason: 'dawn_survived' } },
+    ]);
+    expect(r.snap(30).lanterns[0].fuel).toBe(99.5);
+    expect(r.end).toEqual({ type: 'end', ticks: 30, state: 'won', score: 3 * (50 + 99) + 150 });
+  });
+
+  it('Đêm 1: 2/5 đèn sáng → lost dawn, không có thưởng', () => {
+    const r = run({ scenario: quiet({ time_left_s: 0.5, lanterns: lit(['L1', 'L2']) }), ticks: 100 });
+    expect(r.events.at(-1)!.data).toEqual({ result: 'lost', reason: 'dawn' });
+    expect(r.end.score).toBe(0);
+  });
+
+  it('ngưỡng Đêm 2 = 4/6, Đêm 3 = 5/7', () => {
+    const ids = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7'];
+    for (const [night, need] of [[2, 4], [3, 5]] as const) {
+      const below = run({ night, scenario: quiet({ time_left_s: 0.1, lanterns: lit(ids.slice(0, need - 1)) }), ticks: 10 });
+      expect(below.end.state).toBe('lost');
+      const ok = run({ night, scenario: quiet({ time_left_s: 0.1, lanterns: lit(ids.slice(0, need)) }), ticks: 10 });
+      expect(ok.events.at(-1)!.data).toEqual({ result: 'won', reason: 'dawn_survived' });
+    }
+  });
+
+  it('đèn tắt đúng tick bình minh không được tính (bước 2 trước bước 11)', () => {
+    // L3 fuel 0.5 = 30 đơn vị → tắt ở tick 30 = tick bình minh → chỉ còn 2/5.
+    const r = run({
+      scenario: quiet({ time_left_s: 0.5, lanterns: [...lit(['L1', 'L2']), { id: 'L3', lit: true, fuel: 0.5 }] }),
+      ticks: 100,
     });
+    expect(r.events.map((e) => [e.tick, e.name])).toEqual([
+      [30, 'lantern_out'],
+      [30, 'game_over'],
+    ]);
+    expect(r.end.state).toBe('lost');
+  });
 
-  it('thắng cùng tick hết giờ (time_left_s 0.016) → thưởng thời gian = 0, không âm', () => {
-    const r = run({ scenario: winSetup(0.016), frames: [{ tick: 0, interact: true }], ticks: 10 });
-    expect(r.snap(0).time_left_s).toBe(0.016);
+  it('floor(fuel) theo đơn vị nguyên: fuel 50.3 − 0.5 = 49.8 → +49', () => {
+    const r = run({ scenario: quiet({ time_left_s: 0.5, lanterns: lit(['L1', 'L2', 'L3'], 50.3) }), ticks: 100 });
+    expect(r.snap(30).lanterns[0].fuel).toBe(49.8);
+    expect(r.end.score).toBe(3 * (50 + 49) + 150);
+  });
+
+  it('thắp đèn thứ 3 ngay tick bình minh vẫn tính; không có thưởng thời gian', () => {
+    const r = run({
+      scenario: quiet({ time_left_s: 0.016, player: { carried: 10 }, lanterns: [...lit(['L1', 'L2']), { id: 'L3', pos: [0, 0, 2] }] }),
+      frames: [{ tick: 0, interact: true }],
+      ticks: 10,
+    });
     expect(r.events.map((e) => e.name)).toEqual(['deposit', 'lantern_lit', 'game_over']);
-    expect(r.events[2].data).toEqual({ result: 'won', reason: 'all_lit' });
-    // 100 (nạp 10) + 100 (thắp) + 2 × 0 + 50 × 3 flames = 350 (thắng cùng tick hết giờ vẫn là thắng).
-    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'won', score: 350 });
-    expect(r.snap(1).time_left_s).toBe(0);
+    expect(r.events[2].data).toEqual({ result: 'won', reason: 'dawn_survived' });
+    // 10 × 5 (nạp) + 100 (thắp) + L1, L2 (50 + 99) + L3 (50 + 100) + 50 × 3.
+    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'won', score: 50 + 100 + 2 * 149 + 150 + 150 });
   });
 
-  it('time_left_s 1.4, thắng ở tick 24 → còn đúng 60 tick → floor = 1 (không phải 0 do sai số float)', () => {
-    // Số thực: 1.4 − 24/60 = 0.9999999999999999 → floor 0 (sai). Theo tick nguyên: 84 − 24 = 60 → 1 s.
-    expect(1.4 - 24 / 60).toBeLessThan(1);
-    const r = run({ scenario: winSetup(1.4), frames: [{ tick: 23, interact: true }], ticks: 100 });
-    expect(r.events.find((e) => e.name === 'game_over')).toMatchObject({ tick: 24 });
-    // 100 + 100 + 2 × 1 + 150 = 352.
-    expect(r.end).toEqual({ type: 'end', ticks: 24, state: 'won', score: 352 });
-    expect(r.snap(24).time_left_s).toBe(1);
-  });
-
-  it('thắng ở tick 25 với time_left_s 1.4 → còn 59 tick → floor = 0', () => {
-    const r = run({ scenario: winSetup(1.4), frames: [{ tick: 24, interact: true }], ticks: 100 });
-    expect(r.end).toEqual({ type: 'end', ticks: 25, state: 'won', score: 350 });
+  it('AC3-11: thắp đủ 5 đèn KHÔNG kết thúc Đêm', () => {
+    const r = run({ scenario: quiet({ lanterns: lit(['L1', 'L2', 'L3', 'L4', 'L5']) }), ticks: 600 });
+    expect(r.events).toEqual([]);
+    expect(r.end.state).toBe('playing');
   });
 
   it('dawn đúng ở tick = round(time_left_s × 60), kể cả khi không phải bội của 1/60', () => {
@@ -106,9 +133,13 @@ describe('flames = 0 trong scenario', () => {
   });
 });
 
-describe('AC2-16: thắng/thua xét cuối tick (bước 11)', () => {
-  const lastLamp = (flames: number, shades: { pos: [number, number, number] }[] = []) =>
+// Phase 3: viết lại theo luật thắng bình minh (ticket-03 mục 3): không còn thắng khi thắp đèn cuối;
+// "hết lửa luôn thua trước" giờ xét ở tick bình minh. Test "bóng sát Mây lúc thắp đèn cuối → thắng"
+// bỏ vì không còn thắng sớm; ý "bước 6 đẩy bóng trước bước 9" vẫn được giữ ở test dưới.
+describe('AC2-16 / AC3-12: thắng/thua xét cuối tick (bước 11)', () => {
+  const dawnSetup = (flames: number, shades: { pos: [number, number, number] }[] = []) =>
     quiet({
+      time_left_s: 0.016,
       player: { carried: 10, flames },
       shades,
       lanterns: [
@@ -120,24 +151,21 @@ describe('AC2-16: thắng/thua xét cuối tick (bước 11)', () => {
       ],
     });
 
-  it('đủ đèn nhưng hết lửa cùng tick → thua no_flames (hết lửa luôn thua)', () => {
-    const r = run({ scenario: lastLamp(0), frames: [{ tick: 0, interact: true }], ticks: 10 });
+  it('đủ đèn ở tick bình minh nhưng hết lửa → thua no_flames (hết lửa luôn thua trước)', () => {
+    const r = run({ scenario: dawnSetup(0), frames: [{ tick: 0, interact: true }], ticks: 10 });
     expect(r.events.map((e) => [e.tick, e.name, e.data])).toEqual([
       [1, 'deposit', { lantern_id: 'L5', amount: 10, deposited: 10 }],
-      [1, 'lantern_lit', { lantern_id: 'L5' }],
+      [1, 'lantern_lit', { lantern_id: 'L5', relight: false }],
       [1, 'game_over', { result: 'lost', reason: 'no_flames' }],
     ]);
-    // Không có thưởng thắng: 100 (nạp) + 100 (thắp).
-    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'lost', score: 200 });
+    // Không có thưởng bình minh: 10 × 5 (nạp) + 100 (thắp).
+    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'lost', score: 150 });
   });
 
-  it('bóng sát Mây lúc thắp đèn cuối: bước 6 đẩy bóng ra trước bước 9 → không hit, thắng đủ 3 lửa', () => {
-    // Phase 1 thắng ở bước 5 nên va chạm cùng tick không xảy ra; v1.1 xét ở bước 11,
-    // các bước 6–10 vẫn chạy (vùng an toàn của đèn vừa thắp bảo vệ Mây).
-    const r = run({ scenario: lastLamp(3, [{ pos: [0.5, 0, 0] }]), frames: [{ tick: 0, interact: true }], ticks: 10 });
+  it('bóng sát Mây lúc thắp đèn: bước 6 đẩy bóng ra trước bước 9 → không hit', () => {
+    const r = run({ scenario: dawnSetup(3, [{ pos: [0.5, 0, 0] }]), frames: [{ tick: 0, interact: true }], ticks: 10 });
     expect(r.events.map((e) => e.name)).toEqual(['deposit', 'lantern_lit', 'game_over']);
-    expect(r.events.at(-1)!.data).toEqual({ result: 'won', reason: 'all_lit' });
     expect(r.snap(1).shades[0].pos).not.toEqual([0.5, 1, 0]); // đã bị đẩy ở bước 6
-    expect(r.end).toEqual({ type: 'end', ticks: 1, state: 'won', score: 948 });
+    expect(r.end.state).toBe('won');
   });
 });

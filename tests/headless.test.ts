@@ -86,12 +86,13 @@ describe('Headless', () => {
     const n2 = cli(['--seed', '1', '--night', '2', '--ticks', '5', '--out', out]);
     expect(n2.code).toBe(0);
     const n2lines = readFileSync(out, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-    expect(n2lines[0]).toMatchObject({ type: 'snapshot', night: 2, time_left_s: 330 });
+    // Phase 3: thời lượng Đêm 1/2/3 300/330/360 → 240/270/300 (ticket-03 mục 3, contract v1.2).
+    expect(n2lines[0]).toMatchObject({ type: 'snapshot', night: 2, time_left_s: 270 });
     expect(n2lines[1]).toEqual({ type: 'event', tick: 0, name: 'night_start', data: { night: 2 } });
     const n3 = cli(['--seed', '1', '--night', '3', '--ticks', '5', '--out', out]);
     expect(n3.code).toBe(0);
     const n3lines = readFileSync(out, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-    expect(n3lines[0]).toMatchObject({ type: 'snapshot', night: 3, time_left_s: 360, player: { pos: [0, 0, -30] } });
+    expect(n3lines[0]).toMatchObject({ type: 'snapshot', night: 3, time_left_s: 300, player: { pos: [0, 0, -30] } });
     expect(n3lines[1]).toEqual({ type: 'event', tick: 0, name: 'night_start', data: { night: 3 } });
     expect(parseArgs(['--seed', '1', '--night', '3', '--ticks', '1', '--out', 'o']).night).toBe(3);
     expect(() => parseArgs(['--seed', '1', '--night', '4', '--ticks', '1', '--out', 'o'])).toThrow(FormatError);
@@ -106,7 +107,7 @@ describe('Headless', () => {
     const lines = readFileSync(out, 'utf8').trimEnd().split('\n').map((l) => JSON.parse(l));
     expect(lines.filter((l) => l.type === 'snapshot').map((l) => l.tick)).toEqual([0, 10, 20]);
     expect(lines.at(-1)).toEqual({ type: 'end', ticks: 25, state: 'playing', score: 0 });
-    expect(lines[0]).toMatchObject({ type: 'snapshot', tick: 0, sim_tick: 0, state: 'playing', night: 1, time_left_s: 300 });
+    expect(lines[0]).toMatchObject({ type: 'snapshot', tick: 0, sim_tick: 0, state: 'playing', night: 1, time_left_s: 240 }); // Phase 3: 240 s
     expect(lines[1]).toEqual({ type: 'event', tick: 0, name: 'night_start', data: { night: 1 } });
     expect(lines.filter((l) => l.name === 'night_start')).toHaveLength(1);
     expect(Object.keys(lines[0])).toEqual([
@@ -114,10 +115,12 @@ describe('Headless', () => {
       'shades', 'drifters', 'charms', 'motes_active', 'motes',
     ]);
     expect(lines[0].wind).toEqual({ active: false, dir_deg: 0 });
+    // Phase 3: player thêm capacity (Test Contract v1.2); đèn thêm fuel / ever_lit / relit_count.
     expect(lines[0].player).toEqual({
       pos: [0, 0, 0], vel: [0, 0, 0], grounded: true, flames: 3, carried: 0,
-      invuln: false, dash_cd_s: 0, pulse_cd_s: 0, charm_s: 0,
+      invuln: false, dash_cd_s: 0, pulse_cd_s: 0, charm_s: 0, capacity: 10,
     });
+    expect(Object.keys(lines[0].lanterns[0])).toEqual(['id', 'pos', 'lit', 'deposited', 'fuel', 'ever_lit', 'relit_count']);
     // Đêm 1 không có Gió Lạc / Bùa Gió: mảng rỗng nhưng vẫn có mặt.
     expect(lines[0].drifters).toEqual([]);
     expect(lines[0].charms).toEqual([]);

@@ -62,10 +62,11 @@ describe('Đêm 3 — Đảo Chuông: hình học (AC2-23, AC2-24, AC2-26)', () 
     expect(Math.hypot(x, z)).toBeCloseTo(2, 6);
   });
 
-  it('bản đồ chuẩn: xuất phát (0,0,−30) quay +Z, 360 s, 7 đèn, bùa C1 (30,0,25) / C2 (−30,0,25), bục (0,3,13)', () => {
+  it('bản đồ chuẩn: xuất phát (0,0,−30) quay +Z, 300 s, 7 đèn, bùa C1 (30,0,25) / C2 (−30,0,25), bục (0,3,13)', () => {
     expect(m3.start).toEqual([0, 0, -30]);
     expect(m3.startFacing).toEqual([0, 1]);
-    expect(m3.durationS).toBe(360);
+    // Phase 3: thời lượng Đêm 1/2/3 300/330/360 → 240/270/300 (ticket-03 mục 3, contract v1.2).
+    expect(m3.durationS).toBe(300);
     expect(m3.lanterns).toEqual([
       { id: 'L1', pos: [0, 6, 6] },
       { id: 'L2', pos: [18, 3, 10] },
@@ -108,10 +109,11 @@ describe('Đêm 3 — Đảo Chuông: hình học (AC2-23, AC2-24, AC2-26)', () 
 });
 
 describe('Đêm 3 — headless (AC2-27)', () => {
-  it('--night 3: snapshot tick 0 night 3, 360 s, Mây (0,0,−30), 7 đèn, 2 bùa, 20 đom đóm trên điểm Đêm 3', () => {
+  it('--night 3: snapshot tick 0 night 3, 300 s, Mây (0,0,−30), 7 đèn, 2 bùa, 20 đom đóm trên điểm Đêm 3', () => {
     const r = run({ night: 3, ticks: 0 });
     const s0 = r.snap(0);
-    expect(s0).toMatchObject({ night: 3, time_left_s: 360, player: { flames: 3, pos: [0, 0, -30], grounded: true } });
+    // Phase 3: thời lượng Đêm 1/2/3 300/330/360 → 240/270/300 (ticket-03 mục 3, contract v1.2).
+    expect(s0).toMatchObject({ night: 3, time_left_s: 300, player: { flames: 3, pos: [0, 0, -30], grounded: true } });
     expect(s0.lanterns.map((l) => l.id)).toEqual(['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'L7']);
     expect(s0.charms).toEqual([
       { id: 'C1', available: true, respawn_s: 0 },

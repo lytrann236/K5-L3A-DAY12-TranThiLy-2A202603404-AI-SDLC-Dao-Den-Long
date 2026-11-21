@@ -22,7 +22,7 @@ describe('Đêm 2 — Đảo Cau: bản đồ chuẩn (AC2-21)', () => {
     expect(m2.groundAt(30, 10)).toBeNull(); // khe giữa hai đảo ngoài cầu
   });
 
-  it('6 đèn L1…L6 đúng tọa độ và thứ tự; xuất phát (0,0,0) quay +Z; 330 s; lịch bóng 300 + 420k, tối đa 8', () => {
+  it('6 đèn L1…L6 đúng tọa độ và thứ tự; xuất phát (0,0,0) quay +Z; 270 s; lịch bóng 300 + 420k, tối đa 8', () => {
     expect(m2.lanterns).toEqual([
       { id: 'L1', pos: [0, 0, 20] },
       { id: 'L2', pos: [17, 0, -10] },
@@ -33,7 +33,8 @@ describe('Đêm 2 — Đảo Cau: bản đồ chuẩn (AC2-21)', () => {
     ]);
     expect(m2.start).toEqual([0, 0, 0]);
     expect(m2.startFacing).toEqual([0, 1]);
-    expect(m2.durationS).toBe(330);
+    // Phase 3: thời lượng Đêm 1/2/3 300/330/360 → 240/270/300 (ticket-03 mục 3, contract v1.2).
+    expect(m2.durationS).toBe(270);
     expect([m2.shadeFirstTick, m2.shadeIntervalTicks, m2.shadeMax]).toEqual([300, 420, 8]);
   });
 
@@ -60,10 +61,11 @@ describe('Đêm 2 — Đảo Cau: bản đồ chuẩn (AC2-21)', () => {
     for (const p of m2.shadeSpawns.slice(8)) expect(distXZ(p, B)).toBeCloseTo(26);
   });
 
-  it('--night 2: snapshot tick 0 có night 2, 330 s, 6 đèn, bùa C1; 20 đom đóm trên điểm của Đêm 2', () => {
+  it('--night 2: snapshot tick 0 có night 2, 270 s, 6 đèn, bùa C1; 20 đom đóm trên điểm của Đêm 2', () => {
     const r = run({ night: 2, ticks: 0 });
     const s0 = r.snap(0);
-    expect(s0).toMatchObject({ night: 2, time_left_s: 330, player: { flames: 3, pos: [0, 0, 0] } });
+    // Phase 3: thời lượng Đêm 1/2/3 300/330/360 → 240/270/300 (ticket-03 mục 3, contract v1.2).
+    expect(s0).toMatchObject({ night: 2, time_left_s: 270, player: { flames: 3, pos: [0, 0, 0] } });
     expect(s0.lanterns.map((l) => l.id)).toEqual(['L1', 'L2', 'L3', 'L4', 'L5', 'L6']);
     expect(s0.charms).toEqual([{ id: 'C1', available: true, respawn_s: 0 }]);
     expect(s0.motes).toHaveLength(20);

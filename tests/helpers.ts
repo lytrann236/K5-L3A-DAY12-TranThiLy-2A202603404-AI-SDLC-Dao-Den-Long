@@ -28,8 +28,17 @@ export interface SnapshotLine {
     dash_cd_s: number;
     pulse_cd_s: number;
     charm_s: number;
+    capacity: number;
   };
-  lanterns: { id: string; pos: V3; lit: boolean; deposited: number }[];
+  lanterns: {
+    id: string;
+    pos: V3;
+    lit: boolean;
+    deposited: number;
+    fuel: number;
+    ever_lit: boolean;
+    relit_count: number;
+  }[];
   shades: { id: string; pos: V3; state: string }[];
   drifters: { id: string; pos: V3; state: string; stolen: number }[];
   charms: { id: string; available: boolean; respawn_s: number }[];
