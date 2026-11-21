@@ -10,14 +10,21 @@ export interface Hud {
 }
 
 const KEY_HINTS =
-  'WASD: di chuyển · ←/→ hoặc kéo chuột: xoay camera · Space: nhảy · E: nạp đèn · F: tỏa sáng · R: chơi lại';
+  'WASD: di chuyển · ←/→ hoặc kéo chuột: xoay camera · Space: nhảy · Shift: lướt · E: nạp đèn · F: tỏa sáng · Esc/P: tạm dừng · R: chơi lại';
+
+export const NIGHT_NAMES: Record<number, string> = { 1: 'Đêm 1 — Đảo Đèn', 2: 'Đêm 2 — Đảo Cau', 3: 'Đêm 3 — Đảo Chuông' };
+
+/** Hồi chiêu hiển thị: 0 tick → "sẵn sàng", còn lại → giây (1 chữ số). */
+export function formatCooldown(ticks: number): string {
+  return ticks <= 0 ? 'sẵn sàng' : `${(ticks / 60).toFixed(1)} s`;
+}
 
 function formatTime(sec: number): string {
   const s = Math.max(0, Math.ceil(sec));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export function createHud(hud: HTMLElement, overlay: HTMLElement): Hud {
+export function createHud(hud: HTMLElement): Hud {
   hud.innerHTML = `
     <div class="stats">
       <div>🔥 Ngọn lửa: <b data-k="flames"></b></div>
@@ -25,8 +32,11 @@ export function createHud(hud: HTMLElement, overlay: HTMLElement): Hud {
       <div>🏮 Đèn đã thắp: <b data-k="lanterns"></b></div>
       <div>⏳ Còn lại: <b data-k="time"></b></div>
       <div>⭐ Điểm: <b data-k="score"></b></div>
+      <div>💨 Lướt (Shift): <b data-k="dash"></b></div>
+      <div>🌟 Tỏa Sáng (F): <b data-k="pulse"></b></div>
+      <div data-k-row="charm" hidden>🍃 Bùa Gió: <b data-k="charm"></b></div>
     </div>
-    <div class="seed" data-k="seed"></div>
+    <div class="seed"><span data-k="night"></span> · <span data-k="seed"></span></div>
     <div class="prompt" data-k="prompt" hidden>Có thể nạp đèn (E)</div>
     <div class="toast" data-k="toast" hidden></div>
     <div class="keys">${KEY_HINTS}</div>`;
@@ -37,6 +47,10 @@ export function createHud(hud: HTMLElement, overlay: HTMLElement): Hud {
     lanterns: el('lanterns'),
     time: el('time'),
     score: el('score'),
+    dash: el('dash'),
+    pulse: el('pulse'),
+    charm: el('charm'),
+    night: el('night'),
     seed: el('seed'),
     prompt: el('prompt'),
     toast: el('toast'),
@@ -48,7 +62,7 @@ export function createHud(hud: HTMLElement, overlay: HTMLElement): Hud {
     last.set(k, v);
     nodes[k].textContent = v;
   };
-  let overlayKey = '';
+  const charmRow = hud.querySelector<HTMLElement>('[data-k-row="charm"]')!;
   let noticeUntil = 0;
 
   return {
@@ -70,36 +84,17 @@ export function createHud(hud: HTMLElement, overlay: HTMLElement): Hud {
       set('time', formatTime(state.timeLeft));
       set('score', String(state.score));
       set('seed', `Seed: ${seed}`);
+      set('night', NIGHT_NAMES[state.night] ?? `Đêm ${state.night}`);
+      // Có Bùa Gió thì lướt không hồi chiêu (phase-2.md AC2-36).
+      set('dash', p.charm > 0 ? 'sẵn sàng (bùa)' : formatCooldown(p.dashCooldown));
+      set('pulse', formatCooldown(p.pulseCooldown));
+      charmRow.hidden = p.charm <= 0;
+      set('charm', `${(p.charm / 60).toFixed(1)} s`);
 
       const near =
         state.status === 'playing' &&
         state.lanterns.some((l) => !l.lit && distXZ(l.pos, p.pos) <= TUNING.interact_radius);
       nodes.prompt.hidden = !near;
-
-      // Lý do thua suy ra từ state: chỉ có hai cách thua (hết ngọn lửa hoặc trời sáng).
-      const key = state.status === 'playing' ? '' : `${state.status}|${p.flames <= 0}|${state.score}`;
-      if (key === overlayKey) return;
-      overlayKey = key;
-      if (state.status === 'playing') {
-        overlay.hidden = true;
-        overlay.className = '';
-        overlay.innerHTML = '';
-        return;
-      }
-      const won = state.status === 'won';
-      overlay.hidden = false;
-      overlay.className = won ? 'won' : 'lost';
-      overlay.innerHTML = `
-        <h1>${won ? 'Chiến thắng!' : 'Thất bại'}</h1>
-        <p>${
-          won
-            ? 'Cả năm ngọn đèn đã sáng.'
-            : p.flames <= 0
-              ? 'Ngọn lửa của bạn đã tắt.'
-              : 'Trời đã sáng, đèn chưa thắp đủ.'
-        }</p>
-        <p>Điểm: <b>${state.score}</b></p>
-        <p class="hint">Nhấn R để chơi lại</p>`;
     },
   };
 }

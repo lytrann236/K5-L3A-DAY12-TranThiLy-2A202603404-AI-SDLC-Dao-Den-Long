@@ -3,7 +3,9 @@ import {
   Color,
   ConeGeometry,
   CylinderGeometry,
+  BoxGeometry,
   DirectionalLight,
+  ExtrudeGeometry,
   FogExp2,
   Group,
   InstancedMesh,
@@ -15,13 +17,36 @@ import {
   PlaneGeometry,
   PointLight,
   Scene,
+  Shape,
   SphereGeometry,
   WebGLRenderer,
 } from 'three';
-import { ISLAND_RADIUS, SHADE_Y } from '../sim/constants';
+import {
+  ISLAND_RADIUS,
+  N2_BRIDGE_HALF_W,
+  N2_BRIDGE_X,
+  N2_ISLAND_B_X,
+  N2_ISLAND_RADIUS,
+  N3_ISLAND_RADIUS,
+  N3_RAMP_DEG,
+  N3_RAMP_HALF_W,
+  N3_RAMP_R,
+  N3_TIER1_R,
+  N3_TIER1_Y,
+  N3_TIER2_R,
+  N3_TIER2_Y,
+  N3_TOWER_H,
+  N3_TOWER_R,
+  SHADE_Y,
+} from '../sim/constants';
+import { getMap } from '../sim/maps';
 import { mulberry32 } from '../sim/rng';
 import type { GameState } from '../sim/types';
-import { placeCamera } from './camera';
+import { CAM_DISTANCE, placeCamera } from './camera';
+
+/** ?cam=<mét> kéo camera ra xa (chỉ để chụp ảnh kiểm tra bản đồ). */
+const camParam = Number(new URLSearchParams(location.search).get('cam'));
+const camDistance = camParam >= 5 && camParam <= 150 ? camParam : CAM_DISTANCE;
 
 const LIT_COLOR = 0xffb347;
 const LIT_EMISSIVE = 0xff8a1f;
@@ -33,6 +58,8 @@ interface LanternView {
 }
 
 export interface World {
+  /** Dựng lại hình học cho Đêm 1/2/3 (không làm gì nếu Đêm không đổi). */
+  setNight(night: number): void;
   render(state: GameState, timeSec: number, yawDeg: number, pitchDeg: number): void;
   resize(): void;
 }
@@ -53,19 +80,86 @@ export function createWorld(canvas: HTMLCanvasElement): World {
   moon.position.set(-30, 60, -20);
   scene.add(ambient, moon);
 
-  // Đảo tròn 40 m, mặt trên ở Y = 0.
-  const island = new Mesh(
-    new CylinderGeometry(ISLAND_RADIUS, ISLAND_RADIUS, 3, 72),
-    new MeshStandardMaterial({ color: 0x4f7d5a, roughness: 1 }),
-  );
-  island.position.y = -1.5;
-  const rock = new Mesh(
-    new ConeGeometry(ISLAND_RADIUS, 20, 48),
-    new MeshStandardMaterial({ color: 0x3d322d, roughness: 1 }),
-  );
-  rock.rotation.x = Math.PI; // đỉnh nón hướng xuống
-  rock.position.y = -3 - 10;
-  scene.add(island, rock);
+  // Hình học từng Đêm: khối đơn giản, dựng lại khi đổi Đêm.
+  const terrain = new Group();
+  scene.add(terrain);
+  const grass = new MeshStandardMaterial({ color: 0x4f7d5a, roughness: 1 });
+  const stone = new MeshStandardMaterial({ color: 0x3d322d, roughness: 1 });
+  const wood = new MeshStandardMaterial({ color: 0x8a6a3e, roughness: 1 });
+  const stoneTier = new MeshStandardMaterial({ color: 0x6f8f6a, roughness: 1 });
+  const padMat = new MeshStandardMaterial({ color: 0x59d9ff, emissive: 0x1a9ad0, emissiveIntensity: 1.4 });
+
+  /** Đảo tròn: mặt trên ở Y = 0, đáy là nón đá. */
+  function addIsland(cx: number, r: number): void {
+    const top = new Mesh(new CylinderGeometry(r, r, 3, 72), grass);
+    top.position.set(cx, -1.5, 0);
+    const rock = new Mesh(new ConeGeometry(r, 20, 48), stone);
+    rock.rotation.x = Math.PI; // đỉnh nón hướng xuống
+    rock.position.set(cx, -13, 0);
+    terrain.add(top, rock);
+  }
+  function addDisc(r: number, h: number): void {
+    const m = new Mesh(new CylinderGeometry(r, r, h, 48), stoneTier);
+    m.position.y = h / 2;
+    terrain.add(m);
+  }
+
+  let builtNight = 0;
+  function buildNight(night: number): void {
+    if (night === builtNight) return;
+    builtNight = night;
+    terrain.clear();
+    lanternRoot.clear();
+    lanternViews.clear();
+    if (night === 1) addIsland(0, ISLAND_RADIUS);
+    if (night === 2) {
+      addIsland(0, N2_ISLAND_RADIUS);
+      addIsland(N2_ISLAND_B_X, N2_ISLAND_RADIUS);
+      const [x0, x1] = N2_BRIDGE_X;
+      const bridge = new Mesh(new BoxGeometry(x1 - x0, 0.4, N2_BRIDGE_HALF_W * 2), wood);
+      bridge.position.set((x0 + x1) / 2, -0.2, 0);
+      terrain.add(bridge);
+    }
+    if (night === 3) {
+      addIsland(0, N3_ISLAND_RADIUS);
+      // Tầng 1: nửa vành khăn z > 0, r 12–24, cao 3.
+      const [rin, rout] = N3_TIER1_R;
+      const shape = new Shape();
+      shape.absarc(0, 0, rout, 0, Math.PI, false);
+      shape.absarc(0, 0, rin, Math.PI, 0, true);
+      const t1 = new Mesh(new ExtrudeGeometry(shape, { depth: N3_TIER1_Y, bevelEnabled: false, curveSegments: 48 }), stoneTier);
+      t1.rotation.x = Math.PI / 2; // (x, y) của hình → (x, z) của thế giới; đùn xuống từ Y = đỉnh
+      t1.position.y = N3_TIER1_Y;
+      terrain.add(t1);
+      addDisc(N3_TIER2_R, N3_TIER2_Y);
+      const tower = new Mesh(
+        new CylinderGeometry(N3_TOWER_R, N3_TOWER_R, N3_TOWER_H, 24),
+        new MeshStandardMaterial({ color: 0xc9b98a, roughness: 0.9 }),
+      );
+      tower.position.y = N3_TIER2_Y + N3_TOWER_H / 2;
+      terrain.add(tower);
+      // Hai dốc: đỉnh r 24 (Y 3) → chân r 30 (Y 0).
+      const [top, foot] = N3_RAMP_R;
+      const run = foot - top;
+      const len = Math.hypot(run, N3_TIER1_Y);
+      for (const deg of N3_RAMP_DEG) {
+        const a = (deg * Math.PI) / 180;
+        const ramp = new Mesh(new BoxGeometry(N3_RAMP_HALF_W * 2, 0.3, len), wood);
+        ramp.rotation.order = 'YXZ';
+        ramp.rotation.y = Math.atan2(Math.cos(a), Math.sin(a));
+        ramp.rotation.x = Math.atan2(N3_TIER1_Y, run);
+        const mid = (top + foot) / 2;
+        ramp.position.set(mid * Math.cos(a), N3_TIER1_Y / 2 - 0.15, mid * Math.sin(a));
+        terrain.add(ramp);
+      }
+    }
+    // Bục nhảy (Đêm 2, 3).
+    for (const pad of getMap(night).pads) {
+      const m = new Mesh(new CylinderGeometry(pad.radius, pad.radius, 0.15, 24), padMat);
+      m.position.set(pad.pos[0], pad.pos[1] + 0.075, pad.pos[2]);
+      terrain.add(m);
+    }
+  }
 
   // Biển mây: mặt phẳng lớn + các cụm mây (vị trí cố định, sinh bằng RNG có seed).
   const sea = new Mesh(
@@ -175,6 +269,10 @@ export function createWorld(canvas: HTMLCanvasElement): World {
   const moteViews = new Map<string, Mesh>();
   const shadeGeo = new SphereGeometry(0.8, 18, 14);
   const shadeViews = new Map<string, Mesh>();
+  const drifterGeo = new SphereGeometry(0.6, 14, 10);
+  const drifterViews = new Map<string, Mesh>();
+  const charmGeo = new ConeGeometry(0.5, 1, 6);
+  const charmViews = new Map<string, Mesh>();
 
   function sync<T extends Mesh>(
     views: Map<string, T>,
@@ -209,7 +307,10 @@ export function createWorld(canvas: HTMLCanvasElement): World {
       camera.updateProjectionMatrix();
     },
 
+    setNight: buildNight,
+
     render(state, t, yawDeg, pitchDeg) {
+      buildNight(state.night);
       const litCount = state.lanterns.filter((l) => l.lit).length;
       const k = litCount / Math.max(1, state.lanterns.length);
       ambient.intensity = 0.9 + 0.6 * k;
@@ -239,7 +340,7 @@ export function createWorld(canvas: HTMLCanvasElement): World {
       const moteIds = new Set<string>();
       state.motes.forEach((m, i) => {
         const mesh = sync(moteViews, moteIds, () => new Mesh(moteGeo, moteMat), m.id);
-        mesh.position.set(m.pos[0], 0.8 + Math.sin(t * 2 + i) * 0.15, m.pos[2]);
+        mesh.position.set(m.pos[0], m.pos[1] + 0.8 + Math.sin(t * 2 + i) * 0.15, m.pos[2]);
       });
       prune(moteViews, moteIds);
 
@@ -263,7 +364,37 @@ export function createWorld(canvas: HTMLCanvasElement): World {
       }
       prune(shadeViews, shadeIds);
 
-      placeCamera(camera, p.pos, yawDeg, pitchDeg);
+      // Gió Lạc: bóng trắng xanh; đã `removed` thì ẩn.
+      const driftIds = new Set<string>();
+      for (const d of state.drifters) {
+        if (d.state === 'removed') continue;
+        const mesh = sync(
+          drifterViews,
+          driftIds,
+          () => new Mesh(drifterGeo, new MeshStandardMaterial({ color: 0xbfe8ff, emissive: 0x3a7090, transparent: true, opacity: 0.8 })),
+          d.id,
+        );
+        mesh.position.set(d.pos[0], d.pos[1], d.pos[2]);
+        (mesh.material as MeshStandardMaterial).color.setHex(d.state === 'flee' ? 0xffb0b0 : 0xbfe8ff);
+      }
+      prune(drifterViews, driftIds);
+
+      // Bùa Gió: nón xanh lá xoay, chỉ hiện khi có mặt.
+      const charmIds = new Set<string>();
+      for (const c of state.charms) {
+        const mesh = sync(
+          charmViews,
+          charmIds,
+          () => new Mesh(charmGeo, new MeshStandardMaterial({ color: 0x7dffb0, emissive: 0x20a060, emissiveIntensity: 1.5 })),
+          c.id,
+        );
+        mesh.visible = c.available;
+        mesh.position.set(c.pos[0], c.pos[1] + 1 + Math.sin(t * 2) * 0.15, c.pos[2]);
+        mesh.rotation.y = t;
+      }
+      prune(charmViews, charmIds);
+
+      placeCamera(camera, p.pos, yawDeg, pitchDeg, camDistance);
       renderer.render(scene, camera);
     },
   };

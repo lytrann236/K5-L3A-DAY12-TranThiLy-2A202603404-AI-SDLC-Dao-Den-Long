@@ -136,3 +136,12 @@ describe('hướng di chuyển khớp camera (kiểm bằng camera three.js th�
     expect(z).toBeGreaterThan(0);
   });
 });
+
+describe('HUD hồi chiêu', () => {
+  it('formatCooldown: 0 tick → sẵn sàng, còn lại → giây 1 chữ số', async () => {
+    const { formatCooldown } = await import('../src/render/hud');
+    expect(formatCooldown(0)).toBe('sẵn sàng');
+    expect(formatCooldown(90)).toBe('1.5 s');
+    expect(formatCooldown(180)).toBe('3.0 s');
+  });
+});

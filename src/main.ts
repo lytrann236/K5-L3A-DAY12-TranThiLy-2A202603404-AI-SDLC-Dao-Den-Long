@@ -2,27 +2,67 @@ import './style.css';
 import { failureMessage } from './render/feedback';
 import { createHud } from './render/hud';
 import { createInput } from './render/input';
+import { createMenu } from './render/menu';
 import { createWorld } from './render/scene';
 import { advance } from './render/timestep';
+import { SUPPORTED_NIGHTS } from './sim/maps';
 import { step } from './sim/step';
+import { DEFAULT_INPUT } from './sim/types';
 import { createGame } from './sim/world';
 
+const params = new URLSearchParams(location.search);
 /** ?seed=<số nguyên> cố định seed; không có thì ngẫu nhiên (Math.random chỉ dùng ở đây, không trong sim). */
-const urlSeedRaw = new URLSearchParams(location.search).get('seed');
+const urlSeedRaw = params.get('seed');
 const urlSeed = urlSeedRaw !== null && /^-?\d+$/.test(urlSeedRaw) ? Number(urlSeedRaw) : null;
 const pickSeed = () => urlSeed ?? Math.floor(Math.random() * 2 ** 31);
+/** ?night=1|2|3 bỏ qua menu và vào thẳng Đêm đó. */
+const urlNightRaw = params.get('night');
+const urlNight = urlNightRaw !== null && /^\d+$/.test(urlNightRaw) && SUPPORTED_NIGHTS.includes(Number(urlNightRaw)) ? Number(urlNightRaw) : null;
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const world = createWorld(canvas);
 const input = createInput(canvas);
-const hud = createHud(
-  document.querySelector<HTMLElement>('#hud')!,
-  document.querySelector<HTMLElement>('#overlay')!,
-);
+const hud = createHud(document.querySelector<HTMLElement>('#hud')!);
 
+/** 'menu': chưa chơi; 'playing': sim chạy (kể cả khi sim tạm dừng, xem state.paused); 'ended': thắng/thua. */
+let mode: 'menu' | 'playing' | 'ended' = urlNight === null ? 'menu' : 'playing';
+let night = urlNight ?? 1;
 let seed = pickSeed();
-let state = createGame(seed);
+let state = createGame(seed, {}, night);
 let accMs = 0;
+
+function startNight(n: number): void {
+  night = n;
+  seed = pickSeed();
+  state = createGame(seed, {}, night);
+  accMs = 0;
+  input.reset();
+  hud.notify('', performance.now());
+  mode = 'playing';
+  menu.hide();
+}
+
+/** Bật/tắt tạm dừng bằng chính input `pause` của sim (sườn false → true), kèm một bước nhả nút. */
+function togglePause(): void {
+  if (mode !== 'playing' || state.status !== 'playing') return;
+  step(state, { ...DEFAULT_INPUT, pause: true });
+  step(state, { ...DEFAULT_INPUT, pause: false });
+  if (state.paused) menu.show('paused', { night, score: state.score, hasNext: false });
+  else menu.hide();
+}
+
+const menu = createMenu(document.querySelector<HTMLElement>('#overlay')!, {
+  startNight,
+  resume: togglePause,
+  restart: () => startNight(night),
+  toMenu: () => {
+    mode = 'menu';
+    state = createGame(seed, {}, night); // cảnh nền cho menu
+    menu.show('menu', { night, score: 0, hasNext: false });
+  },
+  next: () => startNight(Math.min(night + 1, SUPPORTED_NIGHTS.length)),
+});
+if (mode === 'menu') menu.show('menu', { night, score: 0, hasNext: false });
 
 window.addEventListener('resize', () => world.resize());
 world.resize();
@@ -33,15 +73,10 @@ function frame(now: number): void {
   last = now;
   input.update(dtMs / 1000);
 
-  if (input.consumeRestart()) {
-    seed = pickSeed(); // có ?seed= thì giữ nguyên, không thì seed ngẫu nhiên mới
-    state = createGame(seed);
-    accMs = 0;
-    input.reset();
-    hud.notify('', now);
-  }
+  if (input.consumePause()) togglePause();
+  if (input.consumeRestart() && mode !== 'menu') startNight(night);
 
-  if (state.status === 'playing') {
+  if (mode === 'playing' && !state.paused && state.status === 'playing') {
     const r = advance(accMs, dtMs);
     accMs = r.accMs;
     for (let i = 0; i < r.ticks && state.status === 'playing'; i++) {
@@ -50,6 +85,16 @@ function frame(now: number): void {
       const events = step(state, sampled); // CHÍNH logic của src/sim, không có logic game lần hai
       const notice = failureMessage(prev, sampled, events, state); // chỉ hiển thị, không đổi sim
       if (notice) hud.notify(notice, now);
+    }
+    if (state.status !== 'playing') {
+      mode = 'ended';
+      const over = state.status === 'won' ? 'won' : 'lost';
+      menu.show(over, {
+        night,
+        score: state.score,
+        hasNext: night < SUPPORTED_NIGHTS.length,
+        reason: state.player.flames <= 0 ? 'no_flames' : 'dawn',
+      });
     }
   }
 

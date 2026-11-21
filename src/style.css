@@ -29,3 +29,9 @@ body { font-family: system-ui, 'Segoe UI', sans-serif; color: #ffe9c2; user-sele
 #overlay.lost h1 { color: #b9a4ff; }
 #overlay p { margin: 0; font-size: 20px; }
 #overlay .hint { margin-top: 12px; font-size: 22px; color: #ffd98a; }
+
+#overlay .buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 8px; }
+#overlay button { font: inherit; font-size: 20px; padding: 10px 22px; color: #ffe9c2; cursor: pointer;
+  background: rgba(40, 30, 20, 0.85); border: 1px solid rgba(255, 190, 110, 0.6); border-radius: 10px; }
+#overlay button:hover { background: rgba(110, 70, 20, 0.95); }
+#overlay.menu, #overlay.paused { background: rgba(4, 6, 16, 0.8); }

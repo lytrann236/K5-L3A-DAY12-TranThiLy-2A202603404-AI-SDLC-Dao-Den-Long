@@ -9,7 +9,7 @@ import {
 } from './controls';
 
 const GAME_KEYS = new Set([
-  'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyF', 'KeyR', 'Space', 'ArrowLeft', 'ArrowRight',
+  'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'KeyF', 'KeyR', 'KeyP', 'Escape', 'ShiftLeft', 'ShiftRight', 'Space', 'ArrowLeft', 'ArrowRight',
 ]);
 
 export interface GameInput {
@@ -19,6 +19,8 @@ export interface GameInput {
   sample(): InputState;
   readonly yawDeg: number;
   readonly pitchDeg: number;
+  /** true một lần sau khi nhấn Esc hoặc P. */
+  consumePause(): boolean;
   /** true một lần sau khi nhấn R. */
   consumeRestart(): boolean;
   /** Xóa các cú nhấn đang chờ (khi chơi lại). */
@@ -27,7 +29,8 @@ export interface GameInput {
 
 export function createInput(canvas: HTMLElement): GameInput {
   const down = new Set<string>();
-  const pending = { jump: false, interact: false, pulse: false };
+  const pending = { jump: false, interact: false, pulse: false, dash: false };
+  let pauseKey = false;
   let restart = false;
   let yaw = 0;
   let pitch = 35;
@@ -43,6 +46,8 @@ export function createInput(canvas: HTMLElement): GameInput {
     if (e.code === 'KeyE') pending.interact = true;
     if (e.code === 'KeyF') pending.pulse = true;
     if (e.code === 'KeyR') restart = true;
+    if (e.code === 'KeyP' || e.code === 'Escape') pauseKey = true;
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') pending.dash = true;
   };
   const onKeyUp = (e: KeyboardEvent) => {
     down.delete(e.code);
@@ -83,11 +88,11 @@ export function createInput(canvas: HTMLElement): GameInput {
         jump: down.has('Space') || pending.jump,
         interact: down.has('KeyE') || pending.interact,
         pulse: down.has('KeyF') || pending.pulse,
-        // Phím lướt / tạm dừng thuộc Việc 6 (giao diện); sim đã hỗ trợ.
-        dash: false,
+        dash: down.has('ShiftLeft') || down.has('ShiftRight') || pending.dash,
+        // Tạm dừng do giao diện điều khiển (main.ts gửi cặp bước pause), không đi qua đây.
         pause: false,
       };
-      pending.jump = pending.interact = pending.pulse = false;
+      pending.jump = pending.interact = pending.pulse = pending.dash = false;
       return input;
     },
     get yawDeg() {
@@ -96,13 +101,19 @@ export function createInput(canvas: HTMLElement): GameInput {
     get pitchDeg() {
       return pitch;
     },
+    consumePause() {
+      const r = pauseKey;
+      pauseKey = false;
+      return r;
+    },
     consumeRestart() {
       const r = restart;
       restart = false;
       return r;
     },
     reset() {
-      pending.jump = pending.interact = pending.pulse = false;
+      pending.jump = pending.interact = pending.pulse = pending.dash = false;
+      pauseKey = false;
     },
   };
 }
