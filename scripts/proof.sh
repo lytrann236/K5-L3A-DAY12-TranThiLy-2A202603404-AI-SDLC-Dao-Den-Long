@@ -90,12 +90,12 @@ for f in scenarios/*.json; do
   [[ "$SEEN" == *" $b "* ]] || { SUMMARY+="CẢNH BÁO: $f không có trong manifest"$'\n'; FAILS=$((FAILS+1)); }
 done
 
-# --- 2b. Hiệu năng (Phase 2): 21.600 tick mỗi Đêm, random bật, ≤ 30 s (AC2-59) ---
+# --- 2b. Hiệu năng (Phase ≥ 2): 21.600 tick mỗi Đêm, random bật, ≤ 30 s (AC2-59 / AC3-17) ---
 PERF="n/a"
-if [ "$N" = 2 ]; then
+if [ "$N" -ge 2 ]; then
   PERF="ĐẠT"
   {
-    echo "# AC2-59: --seed 1 --ticks 21600, random bật; giới hạn 30 s mỗi Đêm. Sinh bởi scripts/proof.sh $N."
+    echo "# AC2-59 / AC3-17: --seed 1 --ticks 21600, random bật; giới hạn 30 s mỗi Đêm. Sinh bởi scripts/proof.sh $N."
     for nt in 1 2 3; do
       t0=$(date +%s.%N 2>/dev/null || date +%s)
       "${CLI[@]}" --seed 1 --night "$nt" --ticks 21600 --out "$TMP/perf-$nt.jsonl" 2>/dev/null; pc=$?
@@ -119,7 +119,13 @@ fi
   echo "| Yêu cầu | Cách kiểm chứng | Bằng chứng | Kết quả |"
   echo "|---|---|---|---|"
   printf '%s' "$ROWS"
-  if [ "$N" = 2 ]; then
+  if [ "$N" = 3 ]; then
+    UT="[\`npm-test.txt\`](npm-test.txt)"
+    echo "| AC3-01…AC3-16 (phần U), AC2-xx / AC1–16 không bị thay thế | Unit test Vitest (\`tests/\`, Phase 3 ở \`tests/fuel.test.ts\`; test cũ sửa có comment \`Phase 3:\`) | $UT | $UNIT |"
+    echo "| AC3-17 | Tất định: mọi scenario chạy 2 lần + diff (bảng trên); hiệu năng 21.600 tick mỗi Đêm ≤ 30 s | [\`perf.txt\`](perf.txt) | $PERF |"
+    echo "| AC3-18 | Ảnh \`npm run shot\`: thanh dầu trên đèn sáng, nhấp nháy 1 Hz khi fuel < 30, HUD đang mang / sức chứa | [\`screenshots/\`](screenshots) | Xem ảnh |"
+    echo "| AC3-19 | Chế độ mù màu \"Bảng màu dễ phân biệt\" | — | Chưa làm |"
+  elif [ "$N" = 2 ]; then
     UT="[\`npm-test.txt\`](npm-test.txt)"
     echo "| AC2-02, 18, 26, 50, 61 và phần Unit của mọi AC ghi U | Unit test Vitest (\`tests/\`) kiểm tra giá trị cụ thể; AC2-61 = test Phase 1 đã sửa theo mục 2 vẫn đạt | $UT | $UNIT |"
     echo "| AC2-59 | \`scripts/proof.sh 2\` đo 21.600 tick cho từng Đêm (seed 1, random bật), giới hạn 30 s | [\`perf.txt\`](perf.txt) | $PERF |"
