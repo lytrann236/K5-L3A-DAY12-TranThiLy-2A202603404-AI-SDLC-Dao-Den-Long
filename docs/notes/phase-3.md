@@ -81,7 +81,7 @@ U = unit test, S = scenario headless (`scenarios/manifest.txt`), P = ảnh giao 
 
 ## 5. Test cũ bị luật mới làm sai (sửa / bỏ, không skip)
 
-Cập nhật ở Việc test (mục 6 của yêu cầu). Mỗi chỗ sửa trong `tests/` có comment `Phase 3:` ghi lý do.
+Mỗi chỗ sửa trong `tests/` có comment `Phase 3:` ghi lý do. Không có test nào bị `skip`.
 
 | Test / scenario | Luật thay thế | Xử lý |
 |---|---|---|
@@ -95,3 +95,12 @@ Cập nhật ở Việc test (mục 6 của yêu cầu). Mỗi chỗ sửa trong
 | Bóng `wander` đứng yên (`ac2-08`, `shades.test`, …) | `wander` đi về đèn | Sửa vị trí kỳ vọng hoặc đặt bóng sao cho kết quả không phụ thuộc |
 | Túi đầy 10 (`ac05`, `motes.test`) | Sức chứa tăng dần | Giữ: `successful_lights = 0` → 10 |
 | `nearestUnlit` | Chọn đèn nhận được | Đổi tên thành `nearestAccepting`, test theo luật mới |
+| `lanterns.test` "chỉ xét đèn chưa sáng" | Đèn sáng chưa đầy được chọn | Sửa: đèn sáng (đã hao) được châm; thêm ca đèn vừa thắp (đầy) bị bỏ qua |
+| `feedback.test` "đứng cạnh đèn đã thắp → không có đèn để nạp" | Đèn sáng nhận châm dầu | Sửa: bấm hợp lệ, không thông báo; câu thông báo đổi thành "chưa thắp hoặc chưa đầy dầu" |
+| `endgame.test` "bóng sát Mây lúc thắp đèn cuối → thắng" | Không thắng sớm | Giữ ý "bước 6 đẩy trước bước 9", chuyển sang tick bình minh |
+| `ac14b-spawn-determinism` 6000 tick | L1 hao dầu, < 30 ở tick 4200 thì mất vùng an toàn | Rút còn 4000 tick (fuel 33.3, vẫn an toàn) |
+| `shades.test` AC2-58 (5 tên trạng thái) | Thêm `drain` | Thêm `drain` vào tập hợp lệ |
+
+## 6. Bằng chứng
+
+`scripts/proof.sh 3` → `docs/proof/phase-3/` (README, JSONL mọi scenario, `npm-test.txt`, `perf.txt`), ảnh `npm run shot -- docs/proof/phase-3/screenshots` (`11-fuel-bars.png`, `12-fuel-blink.png`). Hiệu năng: với seed 1 không scenario, Đêm kết thúc ở bình minh trước 21.600 tick (14.400 / 16.200 / 9.431 tick); chạy thêm 21.600 tick đầy đủ (time_left_s 400, bất tử, có drain) ≈ 0.4 s.

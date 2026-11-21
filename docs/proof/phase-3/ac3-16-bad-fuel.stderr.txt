@@ -1,0 +1,1 @@
+lỗi: scenario.lanterns[0].fuel phải là số trong [0, 100]
