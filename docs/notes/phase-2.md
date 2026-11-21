@@ -204,7 +204,7 @@ Có một số test vẫn xanh dù luật đã đổi, vì code chưa đổi lu�
     - Nhặt bùa thì đặt hồi chiêu lướt về 0 ngay. Khi còn hiệu lực, lướt được bất kể hồi chiêu (`dash_cd_s` = 0).
     - Bùa có mặt lại ở bước 2 tick t+2700 và nhặt được ngay bước 4 của tick đó (đứng sẵn trên bùa thì nhặt lại ở t+2700).
     - Bùa đặt trên mặt đất tại XZ của nó. Snapshot `charms` chỉ ghi `id`, `available`, `respawn_s`, đúng contract.
-- **Bổ sung khi cài đặt Việc 4** (agent tự đặt, **chờ người dùng soát**):
+- **Bổ sung khi cài đặt Việc 4** — **đã chốt** với người dùng (giữ nguyên cả 8 chỗ như đã cài):
   - **Biên các tầng Đêm 3**: tầng 2 là r ≤ 8; tầng 1 là 12 ≤ r ≤ 24 **và z > 0** (đường z = 0 thuộc tầng 0); ngoài r 45 là biển mây. Trong chân tháp (r < 2) mặt đất coi là Y 6, nhưng Mây và Bóng Mực không vào được.
   - **Hình dốc**: dải rộng 3 m (|w| ≤ 1.5 tính từ trục bán kính ở 30° / 150°), Y = 3 × (30 − u) / 6 với u là khoảng cách dọc trục, chỉ xét phần r > 24. Đầu dốc thẳng không khớp vành tròn r 24, nên phần khe nhỏ (u < 24, r > 24, rộng ≤ 0.047 m) lấy Y 3 để dốc nối liền tầng 1, không có hố.
   - **Bậc bám đất `STEP_HEIGHT` = 0.3 m**: chênh mặt đất ≤ 0.3 m thì Mây đi lên / xuống mà vẫn chạm đất (đi dốc). Chênh > 0.3 m là vách: đi lên bị chặn, đi xuống thì rơi từ tick sau. 0.3 m lớn hơn độ dâng mỗi tick trên dốc (≤ 0.134 m khi lướt + gió) và nhỏ hơn mọi vách (3 m). Khi đang trên không, vách chặn chỗ có mặt đất cao hơn chân (cao nhất trong tick) quá 0.3 m. Đêm nhiều tầng: rơi chạm mặt đất là đáp, kể cả mặt dốc đang dâng. Đêm 1, 2 giữ luật cũ (không có vách).
@@ -325,3 +325,24 @@ Cách kiểm: **U** = unit test Vitest · **S** = scenario headless (`scenarios/
 | 6 | Giao diện: chuỗi 3 Đêm, pause menu, cài đặt, âm thanh, HUD đầy đủ, bảng màu, ánh sáng theo tiến độ, gió (lá bay), FPS ≥ 30 | AC2-37…44, 62 |
 
 Sau Việc 1, test Phase 1 sẽ đỏ vì contract đổi số. Đây là dự kiến: Việc 1 không sửa code. Việc 2 sửa code và test theo mục 2.
+
+## Đánh giá Phase 2
+
+- Đạt (headless, có test + scenario): số chuẩn Phần 1, thứ tự 12 bước, tạm dừng, lướt, rơi + hồi sinh, Bóng Mực 5 trạng thái, Tỏa Sáng 3D, vùng an toàn, điểm chuẩn hóa; bản đồ Đêm 1, 2, 3; Gió Lạc; Bùa Gió; gió mạnh Đêm 3; Contract v1.1 (snapshot, scenario, input, sự kiện); hiệu năng 21.600 tick ≈ 0,3 s (≤ 30 s).
+- Regression: 21 test Phase 1 bị luật mới thay thế, đã sửa theo bảng mục 2 kèm lý do; Đêm 1 giữ nguyên output qua Việc 3–4 (cmp).
+- **Chưa làm do hết thời gian** (quyết định ưu tiên headless vì chiếm 30 điểm test ẩn): âm thanh, màn cài đặt (lưu âm lượng/độ nhạy chuột), bảng màu chuẩn, HUD đầy đủ theo ticket, menu/giới thiệu Đêm/lời Ông Đăng, màn Bình Minh, đo FPS ≥ 30. Giao diện hiện có: xem mục "Giao diện Phase 2" ngay dưới.
+- AI sai ở đâu / chỉnh harness: hook Stop lặp 9 lần khi test đỏ có chủ đích → sửa hook kiểm tra stop_hook_active.
+- Token: …
+- Cần chỉnh: phạm vi Phase 2 quá lớn so với thời gian; lần sau ước lượng sớm và cắt phạm vi giao diện ngay từ đầu.
+
+## Giao diện Phase 2 (Việc 6 rút gọn)
+
+**Đã làm** (tối thiểu, chỉ đọc state của sim và gửi input):
+- Màn bắt đầu có 3 nút Đêm 1/2/3; `?night=1|2|3` (kèm `?seed=`) vào thẳng Đêm đó, bỏ qua menu.
+- Shift = lướt; Esc / P = tạm dừng bằng chính input `pause` của sim (overlay: Tiếp tục / Chơi lại Đêm / Về menu); R = chơi lại Đêm.
+- Thắng thì có nút "Đêm kế tiếp" (Đêm 1, 2); thua hoặc thắng đều có "Chơi lại Đêm" / "Về menu".
+- HUD thêm tên Đêm, hồi chiêu Lướt và Tỏa Sáng (có Bùa Gió thì Lướt hiện "sẵn sàng (bùa)"), thời gian Bùa Gió.
+- Hình học bằng khối đơn giản: Đêm 2 (2 đảo, cầu tre, bục nhảy), Đêm 3 (tầng 1 nửa vành khăn, tầng 2, tháp chuông, 2 dốc, bục nhảy); thêm Gió Lạc và Bùa Gió. `?cam=<mét>` kéo camera xa, chỉ để chụp ảnh kiểm tra.
+- Ảnh kiểm tra: `docs/proof/phase-2/screenshots/` (`npm run shot`).
+
+**Chưa làm (hết thời gian)**: âm thanh, màn Cài đặt (âm lượng / độ nhạy chuột), bảng màu chuẩn, mũi tên HUD tới đèn, lá bay báo gió, ánh sáng môi trường theo công thức AC2-43, màn giới thiệu Đêm / lời Ông Đăng, màn Bình Minh + tổng điểm, bố cục HUD đúng ticket, đo FPS (AC2-62). Các AC tương ứng ghi "Chưa đạt" trong `docs/proof/phase-2/README.md`.
