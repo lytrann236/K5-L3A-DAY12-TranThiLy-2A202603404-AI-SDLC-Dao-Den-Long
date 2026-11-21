@@ -1,5 +1,18 @@
 # Changelog
 
+## Phase 4 — Ticket-04 "Bình minh" (Test Contract v1.3, Release v1.0.0)
+
+### Breaking changes
+- `contract_version` "1.3"; `game.contract.json` thêm `bench_cmd` và `soak_cmd`. Tuning và đầu ra headless không đổi.
+
+### Thêm
+- Benchmark `scripts/bench.ts` + chế độ `?bench=1` (cảnh chuẩn 200 Bóng Mực / 100 đom đóm, camera vòng) → `bench.json`.
+- Soak test `scripts/soak.ts` (10 Đêm liên tiếp, input ngẫu nhiên theo seed) → `soak.json`.
+- README đầy đủ; bản web tĩnh `release/dao-den-long-web-v1.0.0.zip` (không commit, đính vào Release).
+
+### Chưa làm (hết thời gian)
+- Bảng xếp hạng cục bộ và `--export-leaderboard`; đổi phím; phụ đề / chỉ báo hình ảnh; giảm chuyển động; chữ lớn ×1.25. Chi tiết: `docs/notes/phase-4.md`.
+
 ## Phase 3 — Ticket-03 "Đèn cạn dầu" (Test Contract v1.2)
 
 ### Breaking changes

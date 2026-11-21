@@ -9,6 +9,7 @@ Game **không dùng asset bên ngoài**: không có ảnh, mô hình 3D, âm tha
 - TypeScript: Apache-2.0
 - Vitest: MIT
 - tsx: MIT
+- [Playwright](https://playwright.dev/) — Apache-2.0 (chỉ dùng cho `npm run shot` và `scripts/bench.ts`, không nằm trong bản chạy)
 - (Đã kiểm tra trường `license` trong `node_modules/<gói>/package.json` ngày 2026-11-20.)
 
 Danh sách đầy đủ và phiên bản nằm ở `package.json` / `package-lock.json`.
