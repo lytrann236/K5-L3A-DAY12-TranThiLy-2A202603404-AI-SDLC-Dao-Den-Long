@@ -7,6 +7,7 @@ import { pickupMotes, spawnMotes, tickMoteTtl } from './motes';
 import { movePlayer, tickPlayerTimers } from './player';
 import { pulse } from './pulse';
 import { collideShades, moveShades, spawnShades, tickShadeTimers } from './shades';
+import { tickWind } from './wind';
 import type { Buttons, GameState, InputState, SimEvent } from './types';
 
 /** Số tick gameplay còn lại, tính bằng số nguyên (không trừ số thực). */
@@ -54,7 +55,8 @@ export function step(s: GameState, input: InputState): SimEvent[] {
   tickSafeTimers(s);
   tickMoteTtl(s);
   tickCharms(s);
-  // 3. Di chuyển Mây (nhảy, lướt, bục nhảy) rồi kiểm tra rơi khỏi đảo.
+  tickWind(s);
+  // 3. Di chuyển Mây (nhảy, lướt, bục nhảy, gió) rồi kiểm tra rơi khỏi đảo.
   movePlayer(s, input, edges.jump, edges.dash, events);
   // 4. Nhặt đom đóm và bùa.
   pickupMotes(s, events);

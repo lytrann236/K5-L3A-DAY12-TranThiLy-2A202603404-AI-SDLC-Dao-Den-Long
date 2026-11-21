@@ -5,6 +5,7 @@ import {
   SHADE_SPAWNING_TICKS,
   SHADE_Y,
   TICK_RATE,
+  WIND_SEED_SALT,
 } from './constants';
 import { TUNING } from './contract';
 import { drifterNum, newDrifter } from './drifters';
@@ -96,12 +97,13 @@ export function createGame(seed: number, scenario: Scenario = {}, night = 1): Ga
     motes: [],
     drifters: [],
     charms: [],
-    wind: { active: false, dirDeg: 0 },
+    wind: { active: false, warning: false, dirDeg: 0 },
     randomMotes: scenario.random_motes ?? true,
     randomShades: scenario.random_shades ?? true,
     randomDrifters: scenario.random_drifters ?? true,
     windEnabled: scenario.wind_enabled ?? true,
     rng: mulberry32(seed),
+    windRng: mulberry32(seed ^ WIND_SEED_SALT),
     prevButtons: { jump: false, interact: false, pulse: false, dash: false, pause: false },
     nextMoteId: 1,
     nextShadeId: 1,
@@ -149,6 +151,7 @@ export function createGame(seed: number, scenario: Scenario = {}, night = 1): Ga
       if (DEFAULT_STATE_TICKS[state] === undefined) ticks = 0;
       else if (ticks <= 0) state = 'wander';
       const sh = newShade(x.id ?? `S${s.nextShadeId++}`, x.pos[0], x.pos[2], state, ticks);
+      sh.pos[1] = (map.groundAt(sh.pos[0], sh.pos[2]) ?? 0) + SHADE_Y; // Y = mặt đất bên dưới + 1
       if (state === 'recoil') sh.recoilDir = dirXZ(p.pos, sh.pos);
       return sh;
     });

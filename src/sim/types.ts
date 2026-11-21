@@ -189,12 +189,18 @@ export interface GameState {
   motes: Mote[];
   drifters: Drifter[];
   charms: Charm[];
-  wind: { active: boolean; dirDeg: number };
+  /**
+   * Gió mạnh (Đêm 3). `active`: đang thổi (không tính 2 s báo trước). `warning`: đang báo trước (chỉ
+   * dùng cho UI, không có trong snapshot). `dirDeg`: hướng của cơn gần nhất (0 nếu chưa có cơn nào).
+   */
+  wind: { active: boolean; warning: boolean; dirDeg: number };
   randomMotes: boolean;
   randomShades: boolean;
   randomDrifters: boolean;
   windEnabled: boolean;
   rng: () => number;
+  /** Luồng RNG riêng cho hướng gió (sinh từ seed), không ảnh hưởng lịch sinh. */
+  windRng: () => number;
   /** Trạng thái nút ở tick trước, để bắt sườn false→true. */
   prevButtons: Buttons;
   nextMoteId: number;
