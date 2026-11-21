@@ -41,11 +41,11 @@ async function waitGame(page: Page, gameSeconds: number): Promise<void> {
   );
 }
 
-async function open(width: number, height: number, dpr: number): Promise<Page> {
+async function open(width: number, height: number, dpr: number, night = 1, extra = ''): Promise<Page> {
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: dpr });
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => m.type() === 'error' && errors.push(`console: ${m.text()}`));
-  await page.goto(`${base}?seed=1`);
+  await page.goto(`${base}?seed=1&night=${night}${extra}`);
   await page.waitForSelector('[data-k="time"]');
   await waitGame(page, 1); // đã có khung hình và sim đang chạy
   return page;
@@ -75,7 +75,34 @@ try {
   await shot(wide, '01-start');
   await holdGame(wide, 'KeyW', 3.4); // đi về phía đèn L1 (0,0,22)
   await shot(wide, '02-near-lantern');
+  // Tạm dừng (Esc): overlay Tiếp tục / Chơi lại Đêm / Về menu.
+  await wide.keyboard.press('Escape');
+  await wide.waitForSelector('#overlay.paused');
+  await shot(wide, '05-paused');
+  await wide.click('button[data-action="resume"]');
+  await wide.waitForSelector('#overlay[hidden]', { state: 'attached' });
+  await wide.click('canvas', { position: { x: 5, y: 5 } }).catch(() => {});
+  // Về menu qua phím + nút.
+  await wide.keyboard.press('Escape');
+  await wide.click('button[data-action="menu"]');
+  await wide.waitForSelector('#overlay.menu');
+  await shot(wide, '06-menu');
   await wide.close();
+
+  // Đêm 2: hai đảo, cầu, bục. Đêm 3: tầng, dốc, tháp.
+  const n2 = await open(1280, 800, 1, 2);
+  await shot(n2, '07-night2-start');
+  await n2.close();
+  const n3 = await open(1280, 800, 1, 3);
+  await shot(n3, '08-night3-start');
+  await n3.close();
+  // Toàn cảnh bản đồ (camera kéo xa) để kiểm tra hình học.
+  const n2far = await open(1280, 800, 1, 2, '&cam=75');
+  await shot(n2far, '09-night2-overview');
+  await n2far.close();
+  const n3far = await open(1280, 800, 1, 3, '&cam=60');
+  await shot(n3far, '10-night3-overview');
+  await n3far.close();
 
   // Cận cảnh nhân vật (cửa sổ nhỏ, độ phân giải gấp đôi).
   const close = await open(640, 480, 2);

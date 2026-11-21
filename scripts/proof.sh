@@ -90,6 +90,25 @@ for f in scenarios/*.json; do
   [[ "$SEEN" == *" $b "* ]] || { SUMMARY+="CẢNH BÁO: $f không có trong manifest"$'\n'; FAILS=$((FAILS+1)); }
 done
 
+# --- 2b. Hiệu năng (Phase 2): 21.600 tick mỗi Đêm, random bật, ≤ 30 s (AC2-59) ---
+PERF="n/a"
+if [ "$N" = 2 ]; then
+  PERF="ĐẠT"
+  {
+    echo "# AC2-59: --seed 1 --ticks 21600, random bật; giới hạn 30 s mỗi Đêm. Sinh bởi scripts/proof.sh $N."
+    for nt in 1 2 3; do
+      t0=$(date +%s.%N 2>/dev/null || date +%s)
+      "${CLI[@]}" --seed 1 --night "$nt" --ticks 21600 --out "$TMP/perf-$nt.jsonl" 2>/dev/null; pc=$?
+      t1=$(date +%s.%N 2>/dev/null || date +%s)
+      el=$(awk -v a="$t0" -v b="$t1" 'BEGIN{printf "%.2f", b-a}')
+      ok=$(awk -v e="$el" 'BEGIN{print (e<=30)?"ĐẠT":"KHÔNG ĐẠT"}')
+      [ "$pc" = 0 ] || ok="KHÔNG ĐẠT (mã thoát $pc)"
+      echo "Đêm $nt: ${el} s — $ok (mã thoát $pc, $(wc -l <"$TMP/perf-$nt.jsonl" | tr -d ' ') dòng output)"
+    done
+  } > "$OUT/perf.txt"
+  grep -q "KHÔNG ĐẠT" "$OUT/perf.txt" && { PERF="KHÔNG ĐẠT"; FAILS=$((FAILS+1)); }
+fi
+
 # --- 3. README ---
 {
   echo "# Bằng chứng Phase $N"
@@ -100,8 +119,21 @@ done
   echo "| Yêu cầu | Cách kiểm chứng | Bằng chứng | Kết quả |"
   echo "|---|---|---|---|"
   printf '%s' "$ROWS"
-  echo "| AC1–AC16 | Unit test Vitest (\`tests/\`) kiểm tra giá trị cụ thể | [\`npm-test.txt\`](npm-test.txt) | $UNIT |"
-  echo "| AC17 | Chơi thật + ảnh/video HUD | — | Chưa đạt: giao diện 3D chưa làm (ngoài phạm vi Việc 1–2) |"
+  if [ "$N" = 2 ]; then
+    UT="[\`npm-test.txt\`](npm-test.txt)"
+    echo "| AC2-02, 18, 26, 50, 61 và phần Unit của mọi AC ghi U | Unit test Vitest (\`tests/\`) kiểm tra giá trị cụ thể; AC2-61 = test Phase 1 đã sửa theo mục 2 vẫn đạt | $UT | $UNIT |"
+    echo "| AC2-59 | \`scripts/proof.sh 2\` đo 21.600 tick cho từng Đêm (seed 1, random bật), giới hạn 30 s | [\`perf.txt\`](perf.txt) | $PERF |"
+    echo "| AC2-44 | Phần sáng tạo thêm tắt khi headless | — | Không áp dụng: chưa có phần sáng tạo thêm nào |"
+    echo "| AC2-37 | Chơi thật + ảnh: màn bắt đầu 3 nút Đêm, nút \"Đêm kế tiếp\" khi thắng | [\`screenshots/\`](screenshots) | Chưa đạt: mới có menu chọn Đêm và Đêm kế tiếp; chưa có màn giới thiệu Đêm / lời Ông Đăng / màn Bình Minh + tổng điểm |"
+    echo "| AC2-38 | Chơi thật + ảnh: Esc/P tạm dừng (sim dừng hoàn toàn, có unit test pause) | [\`screenshots/05-paused.png\`](screenshots/05-paused.png) | Chưa đạt: có Tiếp tục / Chơi lại Đêm / Về menu, chưa có mục Cài đặt |"
+    echo "| AC2-28 (phần UI), AC2-39, AC2-40, AC2-42, AC2-43 | Chơi thật | — | Chưa đạt: lá bay báo gió, cài đặt âm lượng / độ nhạy chuột, âm thanh, bảng màu chuẩn, ánh sáng môi trường theo công thức — Chưa làm (hết thời gian) |"
+    echo "| AC2-41 | Chơi thật + ảnh HUD | [\`screenshots/\`](screenshots) | Chưa đạt: HUD có lửa, đom đóm, đèn, giờ, điểm, hồi Lướt / Tỏa Sáng, Bùa Gió; chưa theo bố cục ticket, chưa có mũi tên tới đèn, chưa đỏ + nhấp nháy ≤ 30 s |"
+    echo "| AC2-62 | Đo FPS trong trình duyệt | — | Chưa đạt: chưa đo |"
+    echo "| Giao diện Đêm 2, 3 (hình học) | Ảnh \`npm run shot\` | [\`screenshots/09-night2-overview.png\`](screenshots/09-night2-overview.png), [\`screenshots/10-night3-overview.png\`](screenshots/10-night3-overview.png) | Có (khối đơn giản: 2 đảo + cầu + bục; tầng + dốc + tháp) |"
+  else
+    echo "| AC1–AC16 | Unit test Vitest (\`tests/\`) kiểm tra giá trị cụ thể | [\`npm-test.txt\`](npm-test.txt) | $UNIT |"
+    echo "| AC17 | Chơi thật + ảnh/video HUD | — | Chưa đạt: giao diện 3D chưa làm (ngoài phạm vi Việc 1–2) |"
+  fi
 } > "$OUT/README.md"
 
 echo "$SUMMARY"
