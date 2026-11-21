@@ -181,7 +181,7 @@ Có một số test vẫn xanh dù luật đã đổi, vì code chưa đổi lu�
     - `drifters` [{`id?`, `pos`, `state?`, `stolen?`}]: thiếu `state` → `idle`, thiếu `stolen` → 0. Thiếu `id` thì đặt tiếp sau id `D<n>` lớn nhất có tên (giống quy ước Bóng Mực).
     - `charms` [{`id?`, `pos?`, `available?`, `respawn_ticks?`}]: thiếu `id` → `C<i+1>` theo thứ tự trong mảng. Thiếu `pos` → **vị trí chuẩn theo id** của Đêm đó (Đêm 2: C1 (35,0,0)). Id không có vị trí chuẩn mà thiếu `pos` → mã thoát 2. `available: false` mà thiếu `respawn_ticks` → 2700. `respawn_ticks: 0` → có mặt ngay.
     - Mảng `drifters` / `charms` trong scenario thay danh sách mặc định (`charms: []` = không có bùa).
-  - **`--night 2|3`**: Việc 3 cài Đêm 2 (`--night 2` chạy được). `--night 3` tạm thoát mã 2 với thông báo "chưa hỗ trợ" tới khi Việc 4 cài bản đồ.
+  - **`--night 2|3`**: Việc 3 cài Đêm 2, Việc 4 cài Đêm 3; cả `--night 1|2|3` đều chạy được.
 - **Bổ sung khi cài đặt Việc 3** (agent tự đặt, **chờ người dùng soát**):
   - **Bục nhảy Đêm 2**:
     - Kích hoạt ở đầu bước 3 khi Mây đang chạm đất, chân ở đúng độ cao bục, XZ ≤ 1 m tới tâm bục và **không đang lướt**. Phóng ngay trong tick đó (giống nhảy). Bục ưu tiên hơn nút nhảy.
@@ -204,7 +204,22 @@ Có một số test vẫn xanh dù luật đã đổi, vì code chưa đổi lu�
     - Nhặt bùa thì đặt hồi chiêu lướt về 0 ngay. Khi còn hiệu lực, lướt được bất kể hồi chiêu (`dash_cd_s` = 0).
     - Bùa có mặt lại ở bước 2 tick t+2700 và nhặt được ngay bước 4 của tick đó (đứng sẵn trên bùa thì nhặt lại ở t+2700).
     - Bùa đặt trên mặt đất tại XZ của nó. Snapshot `charms` chỉ ghi `id`, `available`, `respawn_s`, đúng contract.
-- **Hằng số ngoài contract** đặt trong `src/sim/constants.ts` ở Việc 2: nhảy 7 / −20, chênh cao 1.5, phát hiện 12 / 18, recoil 2 m / 60 tick, spawning 30 tick, bóng Đêm 3 4.5 m/s, bản đồ 3 Đêm, bục nhảy, Gió Lạc (7 / 2 m/s, 1.2 m, cướp 3, ngưỡng 5 đom đóm / 15 m, flee 240 tick, thả 120 tick, sinh tick 1200k), Bùa (600 tick, 7.2 m/s, hồi 2700 tick), gió (1800 / 300 / 120 tick, 2 m/s), rơi (Y −10, chờ 60 tick).
+- **Bổ sung khi cài đặt Việc 4** (agent tự đặt, **chờ người dùng soát**):
+  - **Biên các tầng Đêm 3**: tầng 2 là r ≤ 8; tầng 1 là 12 ≤ r ≤ 24 **và z > 0** (đường z = 0 thuộc tầng 0); ngoài r 45 là biển mây. Trong chân tháp (r < 2) mặt đất coi là Y 6, nhưng Mây và Bóng Mực không vào được.
+  - **Hình dốc**: dải rộng 3 m (|w| ≤ 1.5 tính từ trục bán kính ở 30° / 150°), Y = 3 × (30 − u) / 6 với u là khoảng cách dọc trục, chỉ xét phần r > 24. Đầu dốc thẳng không khớp vành tròn r 24, nên phần khe nhỏ (u < 24, r > 24, rộng ≤ 0.047 m) lấy Y 3 để dốc nối liền tầng 1, không có hố.
+  - **Bậc bám đất `STEP_HEIGHT` = 0.3 m**: chênh mặt đất ≤ 0.3 m thì Mây đi lên / xuống mà vẫn chạm đất (đi dốc). Chênh > 0.3 m là vách: đi lên bị chặn, đi xuống thì rơi từ tick sau. 0.3 m lớn hơn độ dâng mỗi tick trên dốc (≤ 0.134 m khi lướt + gió) và nhỏ hơn mọi vách (3 m). Khi đang trên không, vách chặn chỗ có mặt đất cao hơn chân (cao nhất trong tick) quá 0.3 m. Đêm nhiều tầng: rơi chạm mặt đất là đáp, kể cả mặt dốc đang dâng. Đêm 1, 2 giữ luật cũ (không có vách).
+  - **Cách trượt theo vách**: vị trí đích nằm trong vách thì dời về điểm tự do gần nhất trên mép vách (chiếu vuông góc lên mép tròn hoặc thẳng), tức bỏ thành phần đi vào vách và giữ thành phần tiếp tuyến. Kẹt ở góc trong (không có điểm tự do trong 1 m) thì đứng yên tick đó. Đi thẳng vào tâm tháp (thành phần tiếp tuyến = 0) thì đứng yên.
+  - **`player.vel` khi bị vách chặn** (Đêm 3) là vận tốc thực sau khi trượt (vd. đứng sát vách đẩy vào thì vel ngang = 0). Vận tốc phóng của bục nhảy vẫn được giữ.
+  - **Bóng Mực**: Y = mặt đất bên dưới + 1 sau mỗi lần di chuyển, cả bóng đặt từ scenario. Tháp đẩy bóng ra mép r 2 theo bán kính, tức trượt quanh tháp. Đẩy lùi do Tỏa Sáng chạm tháp thì dừng (vật cản).
+  - **Gió Lạc** dùng nguyên code Việc 3, **không bị tháp chặn** (bay xuyên, Y = mặt đất + 1). Ticket chỉ nói tháp "không leo được"; mục 4.1 chỉ chốt tháp chặn Mây và Bóng Mực.
+  - **Đom đóm rơi / thả rơi vào trong tháp** thì đẩy ra mép tháp r 2, đặt trên tầng 2.
+  - **Gió**:
+    - `dir_deg` đổi sang hướng cơn mới **ngay lúc bắt đầu báo trước** (sim_tick 1800k − 120), để 2 s lá bay đã chỉ đúng hướng. `active` vẫn chỉ true trong 5 s thổi.
+    - Hướng gió dùng **luồng RNG riêng** sinh từ seed (`seed XOR 0x5f3759df`), nên `wind_enabled` bật hay tắt không đổi lịch sinh đom đóm / Bóng Mực / Gió Lạc.
+    - Cơn thứ 12 bắt đầu đúng sim_tick 21600 (tick hết giờ), nên snapshot cuối có thể ghi `active: true`.
+    - Gió có thể đẩy Mây đang đứng yên ra khỏi đảo, và khi đó Mây rơi bình thường.
+  - **Nạp đèn từ tầng dưới**: trên bản đồ chuẩn không có chỗ nào ở tầng dưới cách đèn tầng trên ≤ 2 m XZ (L1 ở r 6 cách mép tầng 2 đúng 2 m, mà r 8 vẫn là tầng 2). Luật "chỉ đo XZ" vẫn đúng, nhưng chỉ kiểm được khi scenario dời đèn.
+- **Hằng số ngoài contract** đặt trong `src/sim/constants.ts` ở Việc 2: nhảy 7 / −20, chênh cao 1.5, phát hiện 12 / 18, recoil 2 m / 60 tick, spawning 30 tick, bóng Đêm 3 4.5 m/s, bản đồ 3 Đêm, bục nhảy, Gió Lạc (7 / 2 m/s, 1.2 m, cướp 3, ngưỡng 5 đom đóm / 15 m, flee 240 tick, thả 120 tick, sinh tick 1200k), Bùa (600 tick, 7.2 m/s, hồi 2700 tick), gió (1800 / 300 / 120 tick, 2 m/s), rơi (Y −10, chờ 60 tick). Việc 4 thêm hình học Đêm 3 (`N3_*`), `STEP_HEIGHT` 0.3 m và `WIND_SEED_SALT`.
 
 ### 4.3 Thứ tự xử lý một tick (theo ticket, bắt buộc)
 1. Đọc input. Xử lý `pause` trước; nếu vừa tạm dừng (hoặc đang tạm dừng) thì dừng ở đây.
