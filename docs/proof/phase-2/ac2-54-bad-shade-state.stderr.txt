@@ -1,0 +1,1 @@
+lỗi: scenario.shades[0].state phải là một trong spawning, wander, chase, recoil, stunned

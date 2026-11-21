@@ -1,0 +1,4 @@
+# AC2-59: --seed 1 --ticks 21600, random bật; giới hạn 30 s mỗi Đêm. Sinh bởi scripts/proof.sh 2.
+Đêm 1: 0.37 s — ĐẠT (mã thoát 0, 1810 dòng output)
+Đêm 2: 0.33 s — ĐẠT (mã thoát 0, 1992 dòng output)
+Đêm 3: 0.30 s — ĐẠT (mã thoát 0, 960 dòng output)

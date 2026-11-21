@@ -1,0 +1,1 @@
+lỗi: scenario.charms[0].pos bắt buộc khi id C7 không phải bùa chuẩn của Đêm 2 (C1)

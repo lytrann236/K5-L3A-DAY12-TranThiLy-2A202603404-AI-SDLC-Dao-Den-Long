@@ -1,0 +1,1 @@
+lỗi: inputs.frames[0].dash phải là boolean
