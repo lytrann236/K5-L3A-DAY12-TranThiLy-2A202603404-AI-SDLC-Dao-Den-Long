@@ -1,6 +1,6 @@
 # Phase 2 — Ticket-02 "Ba hòn đảo" + Test Contract v1.1
 
-Nguồn: `docs/notes/ticket-02.md` (BẮT BUỘC chính xác). Tuning đọc từ `game.contract.json` (v1.1). Hằng số không có trong contract (bản đồ, nhảy, phát hiện, Gió Lạc, Bùa…) nằm ở `src/sim/constants.ts`. Mục 4 liệt kê mọi chỗ ticket không nói rõ. Mục 4.1 là các chỗ đã chốt với người dùng; mục 4.2 do agent tự đặt và cần người dùng soát lại.
+Nguồn: `docs/notes/ticket-02.md` (BẮT BUỘC chính xác). Tuning đọc từ `game.contract.json` (v1.1). Hằng số không có trong contract (bản đồ, nhảy, phát hiện, Gió Lạc, Bùa…) nằm ở `src/sim/constants.ts`. Mục 4 liệt kê mọi chỗ ticket không nói rõ. Mục 4.1 là các chỗ đã chốt với người dùng. Mục 4.2 do agent tự đặt; phần đã được người dùng soát và chốt có ghi **đã chốt**, phần còn lại chờ người dùng soát.
 
 ## 1. Thay đổi so với Phase 1
 
@@ -131,7 +131,7 @@ Có một số test vẫn xanh dù luật đã đổi, vì code chưa đổi lu�
 - **Xuất phát Đêm 3**: (0,0,−30), quay mặt về +Z. Điểm (0,0,0) nằm trong tháp. Đây cũng là điểm hồi sinh sau khi rơi. Đêm 1 và Đêm 2 xuất phát tại (0,0,0), quay về +Z.
 - **Nạp đèn chỉ đo XZ ≤ 2 m**, đúng quy ước v1.0. Ở Đêm 3, đứng tầng dưới sát vách vẫn nạp được đèn tầng trên nếu XZ ≤ 2 m.
 
-### 4.2 Agent tự đặt (người dùng soát lại)
+### 4.2 Agent tự đặt (phần đã chốt có ghi rõ; còn lại chờ người dùng soát)
 - **Giới hạn số lượng** ("tối đa 2 Gió Lạc", "tối đa 6/8/10 Bóng Mực") tính theo số con **đang tồn tại**. Gió Lạc đã `removed` không tính.
 - **Lịch Bóng Mực**: 2 con ở tick 300, sau đó 1 con ở tick 300 + 480k / 420k / 360k cho Đêm 1/2/3. Mọi Đêm đều sinh cách Mây ≥ 15 m (ticket chỉ ghi cho Đêm 1). Chọn điểm hợp lệ ngẫu nhiên theo seed; không có điểm hợp lệ thì bỏ lượt.
 - **Góc bắt đầu của các vòng điểm** khi ticket không ghi là 0°: đom đóm Đêm 1 (r 12 mỗi 45°, r 33 mỗi 22.5°), đom đóm Đêm 2 (r 22 mỗi 45°) và Bóng Mực Đêm 3 (r 43 mỗi 22.5°). Điểm của Đêm 2 tính quanh tâm từng đảo, đảo A trước rồi tới đảo B.
@@ -157,7 +157,7 @@ Có một số test vẫn xanh dù luật đã đổi, vì code chưa đổi lu�
 - **Bùa Gió**: Đêm 1 không có bùa. `charm_s` là thời gian hiệu lực còn lại (giây, 3 chữ số). `respawn_s` của bùa đang `available` là 0. Bùa nhặt lúc túi đầy vẫn được, vì nó không chiếm sức chứa.
 - **Điểm khi thua**: `end.score` là điểm của Đêm đó tới lúc thua (nạp, thắp, pulse), không có thưởng thắng. "Tổng điểm game" (chỉ cộng các Đêm đã thắng) chỉ dùng ở UI, vì headless chạy 1 Đêm.
 - **Tạm dừng**: `pause` (sườn false → true) bật/tắt. Ở tick bật pause: ghi `paused` rồi dừng xử lý. Ở tick bỏ pause: ghi `resumed` rồi chạy bước 2–12 bình thường. Khi tạm dừng, input khác chỉ được ghi nhận làm trạng thái nút (để bắt sườn), không gây hành động.
-- **Bổ sung khi cài đặt Việc 2** (agent tự đặt, người dùng soát lại):
+- **Bổ sung khi cài đặt Việc 2** — **đã chốt** với người dùng (giữ cả 7 chỗ như đã cài; riêng định dạng `charms` / `drifters` chốt như dưới):
   - **Mốc thời gian** (sự kiện ở tick t):
     - Tỏa Sáng ở tick t: `stunned` trong snapshot t…t+119, tick t+120 về `wander` và xét phát hiện ngay. Đẩy lùi chạy ở bước 8 các tick t…t+14.
     - Hit ở tick t: `recoil` lùi ở bước 8 các tick t+1…t+60; sau lần lùi thứ 60 về `wander`, xét phát hiện từ tick t+61.
@@ -177,8 +177,33 @@ Có một số test vẫn xanh dù luật đã đổi, vì code chưa đổi lu�
     - `shades[].state_ticks_left` chỉ có nghĩa với `spawning`, `recoil`, `stunned`. Vắng thì lấy mặc định 30 / 60 / 120. Giá trị 0 thì bóng bắt đầu ở `wander`.
     - `recoil` đặt sẵn lùi theo hướng từ vị trí Mây lúc đầu ra bóng. `stunned` đặt sẵn thì không bị đẩy.
     - `player.pos` cao hơn mặt đất hoặc ngoài đảo thì Mây bắt đầu trên không và rơi. Đom đóm trong scenario có kind `random`, Y = mặt đất.
-  - **Định dạng tạm** (Việc 3 chốt lại): `drifters` [{`id?`, `pos`, `state?`, `stolen?`}] và `charms` [{`id?`, `pos`, `available?`, `respawn_ticks?`}]. Ở Việc 2 chỉ đọc, kiểm kiểu và in ra snapshot; chưa có hành vi.
-  - **`--night 2|3`**: tạm thoát mã 2 với thông báo "chưa hỗ trợ" tới khi Việc 3/4 cài bản đồ.
+  - **Định dạng scenario `drifters` / `charms`** (**đã chốt**):
+    - `drifters` [{`id?`, `pos`, `state?`, `stolen?`}]: thiếu `state` → `idle`, thiếu `stolen` → 0. Thiếu `id` thì đặt tiếp sau id `D<n>` lớn nhất có tên (giống quy ước Bóng Mực).
+    - `charms` [{`id?`, `pos?`, `available?`, `respawn_ticks?`}]: thiếu `id` → `C<i+1>` theo thứ tự trong mảng. Thiếu `pos` → **vị trí chuẩn theo id** của Đêm đó (Đêm 2: C1 (35,0,0)). Id không có vị trí chuẩn mà thiếu `pos` → mã thoát 2. `available: false` mà thiếu `respawn_ticks` → 2700. `respawn_ticks: 0` → có mặt ngay.
+    - Mảng `drifters` / `charms` trong scenario thay danh sách mặc định (`charms: []` = không có bùa).
+  - **`--night 2|3`**: Việc 3 cài Đêm 2 (`--night 2` chạy được). `--night 3` tạm thoát mã 2 với thông báo "chưa hỗ trợ" tới khi Việc 4 cài bản đồ.
+- **Bổ sung khi cài đặt Việc 3** (agent tự đặt, **chờ người dùng soát**):
+  - **Bục nhảy Đêm 2**:
+    - Kích hoạt ở đầu bước 3 khi Mây đang chạm đất, chân ở đúng độ cao bục, XZ ≤ 1 m tới tâm bục và **không đang lướt**. Phóng ngay trong tick đó (giống nhảy). Bục ưu tiên hơn nút nhảy.
+    - Đi bộ lên bục thì phóng ở tick kế tiếp. Lướt ngang qua bục thì không kích hoạt.
+    - Vận tốc phóng: vy 14 và ngang 24 m/s theo hướng từ tâm bục tới tâm đảo kia. Bay 84 tick (1.4 s), đi 33.6 m. Bục (20,0,18) đáp ở (51.614, 0, 6.619), cách tâm B 20 m. Bục (50,0,−18) đáp ở (18.386, 0, −6.619).
+    - Lướt khi đang bay: 12 tick giữ nguyên độ cao (vy = 0, không trọng lực, 14 m/s theo hướng lướt). Hết lướt thì bay tiếp với vận tốc ngang phóng và **vy lúc bắt đầu lướt** (lướt chỉ làm chậm cú rơi 12 tick). Với nhảy thường thì giữ như Việc 2: hết lướt rơi từ vy = 0.
+    - Chạm đất hoặc rơi khỏi đảo thì hết trạng thái bay.
+  - **Phạm vi Bóng Mực Đêm 2**: hai đảo và cầu tre. Bóng chạm mép thì dừng ở mép, không trượt dọc mép và không bay qua khe.
+  - **Gió Lạc**:
+    - **Vòng lượn `idle`**: con mới sinh lấy tâm vòng = điểm sương, vị trí đầu = điểm sương + (4, 0, 0) (góc 0). Con vào `idle` từ scenario hoặc từ `chase`: vòng đi qua vị trí hiện tại ở góc 0, tức tâm = vị trí − (4, 0, 0), nên con không bị nhảy chỗ.
+    - **Chỉ con `chase` cướp được.** Con `idle` chạm Mây (khi Mây mang < 5) không cướp. Túi rỗng thì không cướp. Nhiều con cùng chạm thì xét theo id tăng dần, con sau cướp min(3, phần còn lại). Đây là trường hợp duy nhất `min(3, đang mang)` < 3.
+    - Điều kiện `chase` có thêm: Mây không đang chờ hồi sinh. Khoảng cách 15 m và chạm 1.2 m đo theo XZ.
+    - `idle` → `chase` thì bay đuổi ngay trong tick đó. `chase` → `idle` thì đứng tại chỗ ở tick đó, tick sau mới lượn.
+    - **Thời gian `flee`** đếm theo số lần bay ở bước 8, giống `recoil`. Cướp ở bước 9 tick t → bay ở các tick t+1…t+240, snapshot t+240 là `removed`. Tỏa Sáng ở bước 7 tick t (trước bước 8) → bay ngay tick t, nên `removed` ở snapshot t+239 (thả đồ: t+119).
+    - **Con `removed` vẫn nằm trong mảng `drifters`** của snapshot: đứng yên, giữ `stolen` (số đom đóm mất cùng nó, = 0 nếu đã thả). Như vậy trạng thái `removed` có hiện trong output.
+    - Tỏa Sáng trúng con `flee` đang mang: **mọi** đom đóm thả chồng tại đúng vị trí XZ của Gió Lạc, đặt trên mặt đất ở đó (không có mặt đất thì lấy điểm có mặt đất gần nhất), `dropped`, TTL 480 tick. Sự kiện `drifter_drop` ghi sau sự kiện `pulse` của cùng tick.
+    - Không có sự kiện sinh Gió Lạc (contract không có). Y của Gió Lạc = mặt đất + 1; trên biển mây thì Y = 1.
+  - **Bùa Gió**:
+    - Nhặt ở bước 4 tick t (sau bước 3), nên tốc độ 7.2 m/s áp từ tick t+1. `charm_s` = 10 ở snapshot t. Hết hiệu lực ở bước 2 tick t+600.
+    - Nhặt bùa thì đặt hồi chiêu lướt về 0 ngay. Khi còn hiệu lực, lướt được bất kể hồi chiêu (`dash_cd_s` = 0).
+    - Bùa có mặt lại ở bước 2 tick t+2700 và nhặt được ngay bước 4 của tick đó (đứng sẵn trên bùa thì nhặt lại ở t+2700).
+    - Bùa đặt trên mặt đất tại XZ của nó. Snapshot `charms` chỉ ghi `id`, `available`, `respawn_s`, đúng contract.
 - **Hằng số ngoài contract** đặt trong `src/sim/constants.ts` ở Việc 2: nhảy 7 / −20, chênh cao 1.5, phát hiện 12 / 18, recoil 2 m / 60 tick, spawning 30 tick, bóng Đêm 3 4.5 m/s, bản đồ 3 Đêm, bục nhảy, Gió Lạc (7 / 2 m/s, 1.2 m, cướp 3, ngưỡng 5 đom đóm / 15 m, flee 240 tick, thả 120 tick, sinh tick 1200k), Bùa (600 tick, 7.2 m/s, hồi 2700 tick), gió (1800 / 300 / 120 tick, 2 m/s), rơi (Y −10, chờ 60 tick).
 
 ### 4.3 Thứ tự xử lý một tick (theo ticket, bắt buộc)
