@@ -60,7 +60,7 @@ export interface Scenario {
   motes?: Vec3[];
   shades?: { id?: string; pos: Vec3; state?: ShadeState; state_ticks_left?: number }[];
   drifters?: { id?: string; pos: Vec3; state?: DrifterState; stolen?: number }[];
-  charms?: { id?: string; pos: Vec3; available?: boolean; respawn_ticks?: number }[];
+  charms?: { id?: string; pos?: Vec3; available?: boolean; respawn_ticks?: number }[];
   lanterns?: { id: string; pos?: Vec3; deposited?: number; lit?: boolean }[];
   time_left_s?: number;
 }

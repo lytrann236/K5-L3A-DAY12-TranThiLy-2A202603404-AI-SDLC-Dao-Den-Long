@@ -46,7 +46,7 @@ export function worldMove(input: InputState): [number, number] {
  * - Chạy: vận tốc ngang đạt mục tiêu ngay trong tick (≤ 0.1 s), điều khiển trên không đầy đủ.
  * - Nhảy: chỉ khi chạm đất; quỹ đạo tích phân chính xác với g không đổi (đỉnh 1.225 m, 42 tick).
  * - Lướt: 12 tick × 14 m/s theo hướng move (đứng yên → hướng quay mặt); vy = 0, không trọng lực;
- *   bấm khi đang lướt bị bỏ qua; nhảy trong lúc lướt bị bỏ qua.
+ *   bấm khi đang lướt bị bỏ qua; nhảy trong lúc lướt bị bỏ qua. Có Bùa Gió thì không hồi chiêu.
  * - Bục nhảy: đầu bước, chân Mây đứng trên bục (chạm đất, XZ ≤ 1 m, không đang lướt) → bắn lên với
  *   vận tốc phóng ngay tick này. Phần ngang giữ tới khi chạm đất, `move` không ghi đè; vẫn lướt được
  *   (lướt giữ độ cao, hết lướt thì bay tiếp với vận tốc phóng và vy lúc bắt đầu lướt).
@@ -91,7 +91,7 @@ export function movePlayer(
     }
   }
 
-  if (dash && p.dashTicks === 0 && p.dashCooldown === 0) {
+  if (dash && p.dashTicks === 0 && (p.dashCooldown === 0 || p.charm > 0)) {
     p.dashTicks = DASH_TICKS;
     p.dashDir = [...p.facing];
     p.dashCooldown = p.charm > 0 ? 0 : DASH_COOLDOWN_TICKS;

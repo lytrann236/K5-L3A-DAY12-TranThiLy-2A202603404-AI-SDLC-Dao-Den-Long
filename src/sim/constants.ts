@@ -76,3 +76,7 @@ export const DRIFTER_FLEE_TICKS = 240;
 export const DRIFTER_DROP_VANISH_TICKS = 120;
 export const DRIFTER_SPAWN_INTERVAL_TICKS = 1200;
 export const DRIFTER_MAX = 2;
+
+/** Bùa Gió: hiệu lực 600 tick, xuất hiện lại sau 2700 tick. */
+export const CHARM_TICKS = 600;
+export const CHARM_RESPAWN_TICKS = 2700;

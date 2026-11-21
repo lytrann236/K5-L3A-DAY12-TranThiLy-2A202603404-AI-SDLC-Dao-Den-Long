@@ -60,11 +60,12 @@ describe('Đêm 2 — Đảo Cau: bản đồ chuẩn (AC2-21)', () => {
     for (const p of m2.shadeSpawns.slice(8)) expect(distXZ(p, B)).toBeCloseTo(26);
   });
 
-  it('--night 2: snapshot tick 0 có night 2, 330 s, 6 đèn; 20 đom đóm trên điểm của Đêm 2', () => {
+  it('--night 2: snapshot tick 0 có night 2, 330 s, 6 đèn, bùa C1; 20 đom đóm trên điểm của Đêm 2', () => {
     const r = run({ night: 2, ticks: 0 });
     const s0 = r.snap(0);
     expect(s0).toMatchObject({ night: 2, time_left_s: 330, player: { flames: 3, pos: [0, 0, 0] } });
     expect(s0.lanterns.map((l) => l.id)).toEqual(['L1', 'L2', 'L3', 'L4', 'L5', 'L6']);
+    expect(s0.charms).toEqual([{ id: 'C1', available: true, respawn_s: 0 }]);
     expect(s0.motes).toHaveLength(20);
     for (const m of s0.motes) {
       expect(m2.moteSpawns.some((p) => distXZ(p, m.pos) < 1e-3)).toBe(true);

@@ -1,4 +1,5 @@
 import { TUNING } from '../sim/contract';
+import { getMap } from '../sim/maps';
 import { lanternIds } from '../sim/world';
 import { DRIFTER_STATES, SHADE_STATES } from '../sim/types';
 import type { DrifterState, InputFrame, Scenario, ShadeState, Vec3 } from '../sim/types';
@@ -205,11 +206,21 @@ export function parseScenario(text: string, night = 1): Scenario {
     sc.charms = arr(root.charms, 'scenario.charms').map((x, i) => {
       const at = `scenario.charms[${i}]`;
       if (!isObj(x)) throw new FormatError(`${at} phải là đối tượng`);
-      const out: { id?: string; pos: Vec3; available?: boolean; respawn_ticks?: number } = {
-        pos: vec3(x.pos, `${at}.pos`),
-      };
+      const out: { id?: string; pos?: Vec3; available?: boolean; respawn_ticks?: number } = {};
       const id = optId(x.id, `${at}.id`, seen);
       if (id !== undefined) out.id = id;
+      if (x.pos !== undefined) out.pos = vec3(x.pos, `${at}.pos`);
+      else {
+        // Thiếu pos → vị trí chuẩn theo id (id vắng thì là C<i+1>).
+        const std = getMap(night).charms.map((c) => c.id);
+        const want = id ?? `C${i + 1}`;
+        if (!std.includes(want)) {
+          throw new FormatError(
+            `${at}.pos bắt buộc khi id ${want} không phải bùa chuẩn của Đêm ${night}` +
+              (std.length ? ` (${std.join(', ')})` : ''),
+          );
+        }
+      }
       if (x.available !== undefined) out.available = bool(x.available, `${at}.available`);
       if (x.respawn_ticks !== undefined) out.respawn_ticks = nonNegInt(x.respawn_ticks, `${at}.respawn_ticks`);
       return out;

@@ -181,8 +181,23 @@ describe('Headless', () => {
     for (const b of bad) expect(() => parseScenario(b), b).toThrow(FormatError);
   });
 
+  // Chốt định dạng Việc 3 (phase-2.md 4.2): bùa thiếu pos → vị trí chuẩn theo id của Đêm;
+  // Gió Lạc thiếu state → idle, thiếu stolen → 0.
+  it('AC2-54: charms[] thiếu pos lấy vị trí chuẩn theo id; id không chuẩn mà thiếu pos → mã 2', () => {
+    expect(parseScenario('{"charms":[{"id":"C1"}]}', 2).charms).toEqual([{ id: 'C1' }]);
+    expect(parseScenario('{"charms":[{}]}', 2).charms).toEqual([{}]); // id vắng → C1
+    expect(() => parseScenario('{"charms":[{"id":"C1"}]}', 1)).toThrow(FormatError); // Đêm 1 không có bùa
+    expect(() => parseScenario('{"charms":[{"id":"C2"}]}', 2)).toThrow(FormatError); // Đêm 2 chỉ có C1
+    expect(() => parseScenario('{"charms":[{},{}]}', 2)).toThrow(FormatError); // phần tử 2 → C2
+    expect(parseScenario('{"charms":[{"id":"C9","pos":[1,0,1]}]}', 2).charms).toEqual([{ id: 'C9', pos: [1, 0, 1] }]);
 
-  // Chốt định dạng Việc 3 (phase-2.md 4.2): Gió Lạc thiếu state → idle, thiếu stolen → 0.
+    const badSc = join(dir, 'bad-charm.json');
+    writeFileSync(badSc, '{"charms":[{"id":"C7"}]}');
+    const r = cli(['--seed', '1', '--night', '2', '--scenario', badSc, '--ticks', '1', '--out', join(dir, 'c.jsonl')]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toMatch(/pos/);
+  });
+
   it('AC2-54: drifters[] thiếu state → idle, thiếu stolen → 0 (trong snapshot tick 0)', () => {
     const sc = parseScenario('{"random_motes":false,"drifters":[{"pos":[5,0,5]},{"id":"D4","pos":[-5,0,5],"state":"flee"}]}', 2);
     const r = run({ night: 2, ticks: 0, scenario: sc });

@@ -1,4 +1,5 @@
 import {
+  CHARM_RESPAWN_TICKS,
   MOTE_INITIAL_COUNT,
   SHADE_RECOIL_TICKS,
   SHADE_SPAWNING_TICKS,
@@ -165,12 +166,23 @@ export function createGame(seed: number, scenario: Scenario = {}, night = 1): Ga
     s.nextDrifterId = Math.max(s.nextDrifterId, ...s.drifters.map((d) => drifterNum(d.id) + 1));
   }
 
-  s.charms = (scenario.charms ?? []).map((c, i) => ({
-    id: c.id ?? `C${i + 1}`,
-    pos: [...c.pos] as Vec3,
-    available: c.available ?? true,
-    respawn: c.available === false ? (c.respawn_ticks ?? 0) : 0,
-  }));
+  // Bùa Gió: mặc định theo bản đồ (Đêm 1 không có); scenario `charms` thay danh sách mặc định.
+  // Thiếu `pos` → vị trí chuẩn theo id (parser đã kiểm id có trong bản đồ). Bùa đặt trên mặt đất.
+  const stdCharm = (id: string) => map.charms.find((c) => c.id === id)?.pos;
+  const charmSrc = scenario.charms ?? map.charms.map((c) => ({ id: c.id, pos: c.pos }));
+  s.charms = charmSrc.map((c, i) => {
+    const id = c.id ?? `C${i + 1}`;
+    const pos = c.pos ?? stdCharm(id);
+    if (!pos) throw new Error(`charm ${id} không có pos và không có vị trí chuẩn ở Đêm ${night}`);
+    const hidden = 'available' in c && c.available === false;
+    const respawn = hidden ? (('respawn_ticks' in c ? c.respawn_ticks : undefined) ?? CHARM_RESPAWN_TICKS) : 0;
+    return {
+      id,
+      pos: [pos[0], map.groundAt(pos[0], pos[2]) ?? pos[1], pos[2]] as Vec3,
+      available: !hidden || respawn === 0,
+      respawn,
+    };
+  });
 
   return s;
 }

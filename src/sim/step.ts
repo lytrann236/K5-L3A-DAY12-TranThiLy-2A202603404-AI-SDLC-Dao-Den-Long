@@ -1,5 +1,6 @@
 import { TICK_RATE } from './constants';
 import { TUNING } from './contract';
+import { pickupCharms, tickCharms } from './charms';
 import { collideDrifters, moveDrifters, spawnDrifters } from './drifters';
 import { interact, tickSafeTimers, updateSafeZones } from './lanterns';
 import { pickupMotes, spawnMotes, tickMoteTtl } from './motes';
@@ -52,10 +53,12 @@ export function step(s: GameState, input: InputState): SimEvent[] {
   tickShadeTimers(s);
   tickSafeTimers(s);
   tickMoteTtl(s);
+  tickCharms(s);
   // 3. Di chuyển Mây (nhảy, lướt, bục nhảy) rồi kiểm tra rơi khỏi đảo.
   movePlayer(s, input, edges.jump, edges.dash, events);
-  // 4. Nhặt đom đóm.
+  // 4. Nhặt đom đóm và bùa.
   pickupMotes(s, events);
+  pickupCharms(s, events);
   // 5. Tương tác với đèn.
   interact(s, edges.interact, events);
   // 6. Cập nhật vùng an toàn.
