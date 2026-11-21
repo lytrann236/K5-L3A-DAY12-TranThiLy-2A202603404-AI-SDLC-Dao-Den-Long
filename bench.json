@@ -1,0 +1,18 @@
+{
+  "contract_version": "1.3",
+  "avg_fps": 634.8,
+  "p1_low_fps": 253.8,
+  "frame_ms_p95": 2.6,
+  "frames": 19046,
+  "load_ms": 1606,
+  "peak_mem_mb": null,
+  "vsync_off": true,
+  "renderer": "Three.js r187 (WebGL2) trên Chromium 159.0.8154.6 (Playwright, có cửa sổ 1280×720); GPU: ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+  "os": "Darwin 24.6.0 arm64, Apple M2, 16 GB RAM",
+  "scene": {
+    "shades": 200,
+    "motes": 100,
+    "seed": 42,
+    "duration_s": 30
+  }
+}
