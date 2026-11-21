@@ -11,7 +11,7 @@ const near = (extra: object = {}) => ({ id: 'L1', pos: [0, 0, 1] as [number, num
 
 describe('AC3-15: contract v1.2', () => {
   it('khóa mới và thời lượng 240/270/300', () => {
-    expect(TUNING_JSON.contract_version).toBe('1.2');
+    expect(TUNING_JSON.contract_version).toBe('1.3'); // Phase 4 nâng 1.2 → 1.3, tuning giữ nguyên
     expect(TUNING_JSON.tuning).toMatchObject({
       fuel_max: 100,
       fuel_decay_per_s: 1,

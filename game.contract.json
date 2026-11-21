@@ -1,9 +1,11 @@
 {
-  "contract_version": "1.2",
+  "contract_version": "1.3",
   "team": "2A202603404-tran-thi-ly",
   "build_cmd": "npm ci",
   "run_cmd": "npm run dev -- --open",
   "headless_cmd": "npx tsx src/headless/cli.ts",
+  "bench_cmd": "npx tsx scripts/bench.ts",
+  "soak_cmd": "npx tsx scripts/soak.ts",
   "tuning": {
     "player_speed": 6,
     "carry_capacity": 10,
