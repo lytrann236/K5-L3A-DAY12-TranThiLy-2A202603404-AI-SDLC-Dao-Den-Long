@@ -1,7 +1,7 @@
 // Headless CLI theo Test Contract v1.1:
 //   --seed <int> --night 1|2|3 [--scenario f.json] [--inputs f.json] --ticks <int> --out f.jsonl
 //   [--snapshot-every <int, mặc định 10>]
-// Đêm chưa cài đặt (xem SUPPORTED_NIGHTS) → mã thoát 2, thông báo "chưa hỗ trợ".
+// Đêm ngoài SUPPORTED_NIGHTS → mã thoát 2.
 // Mã thoát: 0 = OK, 2 = tham số / file sai định dạng, 1 = lỗi khác.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { SUPPORTED_NIGHTS } from '../sim/maps';

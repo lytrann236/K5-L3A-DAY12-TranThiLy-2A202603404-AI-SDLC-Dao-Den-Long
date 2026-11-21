@@ -80,3 +80,37 @@ export const DRIFTER_MAX = 2;
 /** Bùa Gió: hiệu lực 600 tick, xuất hiện lại sau 2700 tick. */
 export const CHARM_TICKS = 600;
 export const CHARM_RESPAWN_TICKS = 2700;
+
+/** Đêm 3 — Đảo Chuông (ticket-02 Phần 2). */
+export const N3_ISLAND_RADIUS = 45;
+/** Tầng 1 (Y = 3): vành khăn r 12–24 ở nửa z > 0. Tầng 2 (Y = 6): đĩa r 8 ở tâm. */
+export const N3_TIER1_Y = 3;
+export const N3_TIER1_R: readonly [number, number] = [12, 24];
+export const N3_TIER2_Y = 6;
+export const N3_TIER2_R = 8;
+/** 2 dốc thẳng rộng 3 m dọc bán kính ở 30° và 150°: chân r 30 (Y 0), đỉnh r 24 (Y 3). */
+export const N3_RAMP_DEG: readonly number[] = [30, 150];
+export const N3_RAMP_HALF_W = 1.5;
+export const N3_RAMP_R: readonly [number, number] = [24, 30];
+/** Tháp chuông: trụ r 2, cao 8 m trên tầng 2, ở tâm. Chặn Mây và Bóng Mực. */
+export const N3_TOWER_R = 2;
+export const N3_TOWER_H = 8;
+/** Bục nhảy (0,3,13): vy 12 m/s, ngang 8 m/s hướng −Z. */
+export const N3_PAD_POS: readonly [number, number, number] = [0, 3, 13];
+export const N3_PAD_VY = 12;
+export const N3_PAD_VH = 8;
+/** Bóng Mực Đêm 3: 4.5 m/s. */
+export const N3_SHADE_SPEED = 4.5;
+/**
+ * Bậc tối đa Mây tự bước lên / xuống mà vẫn bám đất (m), dùng cho dốc Đêm 3. Lớn hơn độ dâng
+ * mỗi tick trên dốc (≤ 0.134 m khi lướt + gió) và nhỏ hơn mọi vách tầng (3 m).
+ */
+export const STEP_HEIGHT = 0.3;
+
+/** Gió mạnh Đêm 3: cơn k ≥ 1 thổi sim_tick [1800k, 1800k + 300), báo trước 120 tick, đẩy 2 m/s. */
+export const WIND_PERIOD_TICKS = 1800;
+export const WIND_GUST_TICKS = 300;
+export const WIND_WARN_TICKS = 120;
+export const WIND_SPEED = 2;
+/** Gió dùng luồng RNG riêng sinh từ seed (seed XOR hằng này), để bật/tắt gió không đổi lịch sinh. */
+export const WIND_SEED_SALT = 0x5f3759df;

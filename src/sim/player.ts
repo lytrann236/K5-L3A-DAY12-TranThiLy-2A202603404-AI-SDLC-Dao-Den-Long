@@ -5,7 +5,9 @@ import {
   ISLAND_RADIUS,
   JUMP_SPEED,
   RESPAWN_WAIT_TICKS,
+  STEP_HEIGHT,
   TICK_RATE,
+  WIND_SPEED,
 } from './constants';
 import { TUNING } from './contract';
 import { clampToDisk, distXZ } from './geom';
@@ -50,6 +52,7 @@ export function worldMove(input: InputState): [number, number] {
  * - Bục nhảy: đầu bước, chân Mây đứng trên bục (chạm đất, XZ ≤ 1 m, không đang lướt) → bắn lên với
  *   vận tốc phóng ngay tick này. Phần ngang giữ tới khi chạm đất, `move` không ghi đè; vẫn lướt được
  *   (lướt giữ độ cao, hết lướt thì bay tiếp với vận tốc phóng và vy lúc bắt đầu lướt).
+ * - Gió (Đêm 3): +2 m/s theo hướng gió vào vận tốc ngang. Vách tầng / tháp (Đêm 3): trượt theo vách.
  * - Rơi: Y < −10 → player_hit fall (đúng 1 lần, bỏ qua bất tử), chờ 60 tick rồi hồi sinh.
  */
 export function movePlayer(
@@ -119,15 +122,35 @@ export function movePlayer(
     }
     p.vel = p.launch ? [p.launch[0], vy, p.launch[1]] : [wx * speed, vy, wz * speed];
   }
-  p.pos[0] += p.vel[0] * DT;
-  p.pos[2] += p.vel[2] * DT;
+  // Gió mạnh (Đêm 3): cộng 2 m/s theo hướng gió vào vận tốc ngang, kể cả trên không / lướt / bay.
+  if (s.wind.active) {
+    const th = (s.wind.dirDeg * Math.PI) / 180;
+    p.vel[0] += WIND_SPEED * Math.cos(th);
+    p.vel[2] += WIND_SPEED * Math.sin(th);
+  }
+  const nx = p.pos[0] + p.vel[0] * DT;
+  const nz = p.pos[2] + p.vel[2] * DT;
+  if (map.resolveMove) {
+    // Đêm nhiều tầng: vách chặn chỗ có mặt đất cao hơn chân (cao nhất trong tick) quá STEP_HEIGHT.
+    [p.pos[0], p.pos[2]] = map.resolveMove(p.pos[0], p.pos[2], nx, nz, Math.max(y0, p.pos[1]) + STEP_HEIGHT);
+  } else {
+    p.pos[0] = nx;
+    p.pos[2] = nz;
+  }
   if (!TUNING.fall_enabled) clampToDisk(p.pos, ISLAND_RADIUS);
 
   const g = map.groundAt(p.pos[0], p.pos[2]);
   if (p.grounded) {
-    if (g === null) p.grounded = false; // bước ra khỏi mép: bắt đầu rơi từ tick sau
+    // Bước ra khỏi mép đảo / mép tầng: bắt đầu rơi từ tick sau. Dốc (hạ ≤ STEP_HEIGHT) thì bám đất.
+    if (g === null || g < p.pos[1] - STEP_HEIGHT) p.grounded = false;
     else p.pos[1] = g;
-  } else if (g !== null && p.pos[1] <= g + EPS && y0 >= g - EPS) {
+  } else if (
+    g !== null &&
+    p.pos[1] <= g + EPS &&
+    // Đêm 1, 2: chỉ đáp khi đi từ trên xuống. Đêm nhiều tầng: vách đã chặn chỗ cao hơn chân quá
+    // STEP_HEIGHT, nên chạm mặt đất (kể cả mặt dốc đang dâng lên) là đáp.
+    (y0 >= g - EPS || map.resolveMove !== undefined)
+  ) {
     p.pos[1] = g;
     p.vel[1] = 0;
     p.grounded = true;

@@ -8,10 +8,16 @@ import {
   N2_ISLAND_RADIUS,
   N2_PAD_VH,
   N2_PAD_VY,
+  N3_ISLAND_RADIUS,
+  N3_PAD_POS,
+  N3_PAD_VH,
+  N3_PAD_VY,
+  N3_SHADE_SPEED,
   PAD_RADIUS,
 } from './constants';
 import { TUNING } from './contract';
 import { clampToDisk, exitDiskT } from './geom';
+import { n3Ground, n3NearestGround, n3ResolveMove, n3TowerPush } from './night3';
 import type { Vec3 } from './types';
 
 /** Bục nhảy: chân Mây chạm đĩa bán kính `radius` quanh `pos` thì bị bắn với vận tốc `vel`. */
@@ -51,6 +57,15 @@ export interface NightMap {
   shadeExitT(p: Vec3, dx: number, dz: number): number | null;
   /** Điểm có mặt đất gần (x, z) nhất (XZ) — dùng khi đom đóm rơi / được thả ra ngoài đảo. */
   nearestGround(x: number, z: number): [number, number];
+  /** Đêm có gió mạnh (Đêm 3). */
+  wind: boolean;
+  /**
+   * Đêm nhiều tầng (Đêm 3): di chuyển ngang của Mây có vách. Trả về vị trí XZ sau khi trượt theo vách
+   * khi chân cao tối đa `maxY`. Vắng (Đêm 1, 2) = không có vách, đi thẳng tới đích.
+   */
+  resolveMove?(x0: number, z0: number, x1: number, z1: number, maxY: number): [number, number];
+  /** Vật cản đặc chặn Bóng Mực (tháp chuông): điểm bị đẩy ra mép, null nếu không chạm. */
+  solidPush?(x: number, z: number, fromX: number, fromZ: number): [number, number] | null;
 }
 
 /** Các điểm trên vòng tròn bán kính r, bắt đầu ở `startDeg`, cách nhau `stepDeg`. */
@@ -84,6 +99,7 @@ const NIGHT1: NightMap = {
   pads: [],
   charms: [],
   drifters: false,
+  wind: false,
   groundAt: (x, z) => (x * x + z * z <= ISLAND_RADIUS * ISLAND_RADIUS ? 0 : null),
   shadeExitT: (p, dx, dz) => exitDiskT(p, dx, dz, ISLAND_RADIUS),
   nearestGround: (x, z) => {
@@ -148,6 +164,7 @@ const NIGHT2: NightMap = {
   pads: [padToward([20, 0, 18], [BX, 0, 0]), padToward([50, 0, -18], [0, 0, 0])],
   charms: [{ id: 'C1', pos: [35, 0, 0] }],
   drifters: true,
+  wind: false,
   groundAt: n2Ground,
   shadeExitT: (p, dx, dz) => {
     if (n2Ground(p[0] + dx, p[2] + dz) !== null) return null;
@@ -181,11 +198,51 @@ const NIGHT2: NightMap = {
   },
 };
 
-/** Các Đêm đã cài đặt. Đêm 3 thuộc Việc 4. */
-export const SUPPORTED_NIGHTS = [1, 2];
+// ---- Đêm 3 — Đảo Chuông ----
+const NIGHT3: NightMap = {
+  night: 3,
+  durationS: TUNING.night3_duration_s,
+  // (0,0,0) nằm trong tháp chuông nên xuất phát / hồi sinh ở (0,0,−30), quay +Z (phase-2.md 4.1).
+  start: [0, 0, -30],
+  startFacing: [0, 1],
+  lanterns: [
+    { id: 'L1', pos: [0, 6, 6] },
+    { id: 'L2', pos: [18, 3, 10] },
+    { id: 'L3', pos: [-18, 3, 10] },
+    { id: 'L4', pos: [35, 0, -10] },
+    { id: 'L5', pos: [-35, 0, -10] },
+    { id: 'L6', pos: [20, 0, -35] },
+    { id: 'L7', pos: [-20, 0, -35] },
+  ],
+  // Tầng 0: 18 điểm r 34 mỗi 20° từ 0°; tầng 1: 8 điểm r 18 ở 20°…160°; tầng 2: 4 điểm r 5 ở 45°…315°.
+  moteSpawns: [...ring(34, 18, 0, 20, 0), ...ring(18, 8, 20, 20, 3), ...ring(5, 4, 45, 90, 6)],
+  // 16 điểm r 43 mỗi 22.5° từ 0° (phase-2.md 4.2).
+  shadeSpawns: ring(43, 16, 0, 22.5),
+  shadeFirstTick: 300,
+  shadeIntervalTicks: 360,
+  shadeMax: 10,
+  shadeSpeed: N3_SHADE_SPEED,
+  pads: [{ pos: [...N3_PAD_POS], radius: PAD_RADIUS, vel: [0, N3_PAD_VY, -N3_PAD_VH] }],
+  charms: [
+    { id: 'C1', pos: [30, 0, 25] },
+    { id: 'C2', pos: [-30, 0, 25] },
+  ],
+  drifters: true,
+  wind: true,
+  groundAt: n3Ground,
+  shadeExitT: (p, dx, dz) => exitDiskT(p, dx, dz, N3_ISLAND_RADIUS),
+  nearestGround: n3NearestGround,
+  resolveMove: n3ResolveMove,
+  solidPush: n3TowerPush,
+};
+
+/** Các Đêm đã cài đặt. */
+export const SUPPORTED_NIGHTS = [1, 2, 3];
+
+const MAPS: Record<number, NightMap> = { 1: NIGHT1, 2: NIGHT2, 3: NIGHT3 };
 
 export function getMap(night: number): NightMap {
-  if (night === 1) return NIGHT1;
-  if (night === 2) return NIGHT2;
-  throw new Error(`--night ${night} chưa hỗ trợ`);
+  const m = MAPS[night];
+  if (!m) throw new Error(`--night ${night} chưa hỗ trợ`);
+  return m;
 }

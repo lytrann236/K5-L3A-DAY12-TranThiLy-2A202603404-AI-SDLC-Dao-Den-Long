@@ -76,9 +76,9 @@ describe('Headless', () => {
     expect(cli(['--seed', '1', '--night', '1', '--ticks', '5', '--out', out, '--bogus', '1']).code).toBe(2);
   });
 
-  // Sửa theo phase-2.md mục 2: "--night nhận 1, 2, 3". Ngoài 1…3 → mã 2. Việc 3 cài Đêm 2 nên
-  // --night 2 chạy được (mã 0); Đêm 3 chưa cài (Việc 4) nên tạm thoát mã 2 "chưa hỗ trợ".
-  it('AC2-51: --night ngoài 1…3 → mã 2; --night 2 chạy được; --night 3 tạm "chưa hỗ trợ" (mã 2)', () => {
+  // Sửa theo phase-2.md mục 2: "--night nhận 1, 2, 3". Ngoài 1…3 → mã 2. Việc 3 cài Đêm 2,
+  // Việc 4 cài Đêm 3 nên --night 2 và --night 3 đều chạy được (mã 0).
+  it('AC2-51: --night ngoài 1…3 → mã 2; --night 2 và --night 3 chạy được', () => {
     const out = join(dir, 'x.jsonl');
     for (const n of ['0', '4', '-1', '1.5']) {
       expect(cli(['--seed', '1', '--night', n, '--ticks', '5', '--out', out]).code).toBe(2);
@@ -89,8 +89,10 @@ describe('Headless', () => {
     expect(n2lines[0]).toMatchObject({ type: 'snapshot', night: 2, time_left_s: 330 });
     expect(n2lines[1]).toEqual({ type: 'event', tick: 0, name: 'night_start', data: { night: 2 } });
     const n3 = cli(['--seed', '1', '--night', '3', '--ticks', '5', '--out', out]);
-    expect(n3.code).toBe(2);
-    expect(n3.stderr).toMatch(/chưa hỗ trợ/);
+    expect(n3.code).toBe(0);
+    const n3lines = readFileSync(out, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    expect(n3lines[0]).toMatchObject({ type: 'snapshot', night: 3, time_left_s: 360, player: { pos: [0, 0, -30] } });
+    expect(n3lines[1]).toEqual({ type: 'event', tick: 0, name: 'night_start', data: { night: 3 } });
     expect(parseArgs(['--seed', '1', '--night', '3', '--ticks', '1', '--out', 'o']).night).toBe(3);
     expect(() => parseArgs(['--seed', '1', '--night', '4', '--ticks', '1', '--out', 'o'])).toThrow(FormatError);
   });
