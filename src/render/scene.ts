@@ -38,7 +38,9 @@ import {
   N3_TOWER_H,
   N3_TOWER_R,
   SHADE_Y,
+  TICK_RATE,
 } from '../sim/constants';
+import { FUEL_MAX_U, isWeak } from '../sim/fuel';
 import { getMap } from '../sim/maps';
 import { mulberry32 } from '../sim/rng';
 import type { GameState } from '../sim/types';
@@ -55,7 +57,17 @@ interface LanternView {
   group: Group;
   body: Mesh;
   light: PointLight;
+  /** Thanh dầu (Phase 3): nền + phần đầy, quay theo camera. */
+  bar: Group;
+  barFill: Mesh;
 }
+
+/** Thanh dầu: rộng 1.6 m, cao 0.18 m, đặt trên đỉnh đèn. */
+const BAR_W = 1.6;
+const BAR_H = 0.18;
+const BAR_Y = 4.6;
+const FUEL_OK = 0xffd66b;
+const FUEL_LOW = 0xff5a5f;
 
 export interface World {
   /** Dựng lại hình học cho Đêm 1/2/3 (không làm gì nếu Đêm không đổi). */
@@ -209,10 +221,16 @@ export function createWorld(canvas: HTMLCanvasElement): World {
       body.position.y = 3.4;
       const light = new PointLight(LIT_COLOR, 0, 42, 1);
       light.position.y = 3.4;
+      const bar = new Group();
+      bar.position.y = BAR_Y;
+      const barBg = new Mesh(new PlaneGeometry(BAR_W + 0.08, BAR_H + 0.08), new MeshBasicMaterial({ color: 0x1a1426 }));
+      const barFill = new Mesh(new PlaneGeometry(BAR_W, BAR_H), new MeshBasicMaterial({ color: FUEL_OK }));
+      barFill.position.z = 0.01;
+      bar.add(barBg, barFill);
       const g = new Group();
-      g.add(post, body, light);
+      g.add(post, body, light, bar);
       lanternRoot.add(g);
-      v = { group: g, body, light };
+      v = { group: g, body, light, bar, barFill };
       lanternViews.set(id, v);
     }
     return v;
@@ -317,14 +335,26 @@ export function createWorld(canvas: HTMLCanvasElement): World {
       moon.intensity = 0.8 + 0.6 * k;
       (scene.background as Color).copy(night).lerp(dawnish, k);
 
+      // Phase 3: nhấp nháy 1 Hz (0.5 s sáng / 0.5 s mờ) theo sim_tick khi fuel < 30.
+      const blinkDim = Math.floor(state.simTick / (TICK_RATE / 2)) % 2 === 1;
       for (const l of state.lanterns) {
         const v = lanternView(l.id);
         v.group.position.set(l.pos[0], l.pos[1], l.pos[2]);
+        const f = Math.max(0, Math.min(1, l.fuelU / FUEL_MAX_U));
+        const low = isWeak(l);
+        const dim = low && blinkDim;
         const mat = v.body.material as MeshStandardMaterial;
         mat.color.setHex(l.lit ? LIT_COLOR : 0x6a4a36);
         mat.emissive.setHex(l.lit ? LIT_EMISSIVE : 0x000000);
-        mat.emissiveIntensity = l.lit ? 1.6 : 0;
-        v.light.intensity = l.lit ? 60 : 0;
+        mat.emissiveIntensity = l.lit ? (dim ? 0.3 : 1.6) : 0;
+        v.light.intensity = l.lit ? (dim ? 12 : 60) : 0;
+        v.bar.visible = l.lit;
+        v.bar.quaternion.copy(camera.quaternion);
+        v.barFill.scale.x = Math.max(0.001, f);
+        v.barFill.position.x = (-(1 - f) * BAR_W) / 2;
+        const fm = v.barFill.material as MeshBasicMaterial;
+        fm.color.setHex(low ? FUEL_LOW : FUEL_OK);
+        v.barFill.visible = !dim;
       }
 
       const p = state.player;

@@ -73,6 +73,13 @@ try {
   // Toàn cảnh.
   const wide = await open(1280, 800, 1);
   await shot(wide, '01-start');
+  // Phase 3: thanh dầu + nhấp nháy 1 Hz (L1 fuel 25) + HUD đang mang / sức chứa.
+  const fuel = await open(1280, 800, 1, 1, '&demo=fuel');
+  await holdGame(fuel, 'KeyW', 2);
+  await shot(fuel, '11-fuel-bars');
+  await fuel.waitForTimeout(500);
+  await shot(fuel, '12-fuel-blink');
+  await fuel.close();
   await holdGame(wide, 'KeyW', 3.4); // đi về phía đèn L1 (0,0,22)
   await shot(wide, '02-near-lantern');
   // Tạm dừng (Esc): overlay Tiếp tục / Chơi lại Đêm / Về menu.

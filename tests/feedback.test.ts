@@ -61,18 +61,21 @@ describe('Thông báo khi bấm không đủ điều kiện', () => {
     expect(MSG_DEPOSIT_NEED_MOTES).toBe('Cần mang đom đóm để nạp đèn');
   });
 
-  it('nạp đèn khi đứng xa đèn → "Đứng gần đèn chưa thắp để nạp"', () => {
+  // Phase 3: đèn sáng chưa đầy cũng nhận đom đóm (ticket-03 mục 1) → đổi câu thông báo.
+  it('nạp đèn khi đứng xa đèn → "Đứng gần đèn chưa thắp hoặc chưa đầy dầu để nạp"', () => {
     const s = createGame(1, quiet({ player: { pos: [0, 0, 0], carried: 5 } }));
     expect(tick(s, { interact: true })).toBe(MSG_DEPOSIT_NEED_LANTERN);
-    expect(MSG_DEPOSIT_NEED_LANTERN).toBe('Đứng gần đèn chưa thắp để nạp');
+    expect(MSG_DEPOSIT_NEED_LANTERN).toBe('Đứng gần đèn chưa thắp hoặc chưa đầy dầu để nạp');
   });
 
-  it('đứng cạnh đèn ĐÃ thắp cũng bị coi là không có đèn chưa thắp để nạp', () => {
+  // Phase 3: thay "đèn đã thắp → không có đèn để nạp": đèn sáng đã hao dầu thì được châm (refuel),
+  // nên bấm hợp lệ và không có thông báo.
+  it('đứng cạnh đèn đã thắp (đã hao dầu) → châm dầu, không thông báo', () => {
     const s = createGame(
       1,
       quiet({ player: { pos: [0, 0, 24], carried: 5 }, lanterns: [{ id: 'L1', lit: true }] }),
     );
-    expect(tick(s, { interact: true })).toBe(MSG_DEPOSIT_NEED_LANTERN);
+    expect(tick(s, { interact: true })).toBeNull();
   });
 
   it('bấm hợp lệ thì không có thông báo (nạp đèn, tỏa sáng)', () => {

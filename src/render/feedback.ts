@@ -1,4 +1,5 @@
 import { TUNING } from '../sim/contract';
+import { isAccepting } from '../sim/fuel';
 import { distXZ } from '../sim/geom';
 import type { GameState, InputState, SimEvent } from '../sim/types';
 
@@ -8,7 +9,7 @@ export const NOTICE_MS = 1500;
 export const MSG_PULSE_NEED_MOTES = `Cần ≥ ${TUNING.pulse_cost} đom đóm để tỏa sáng`;
 export const MSG_PULSE_COOLDOWN = 'Đang hồi chiêu';
 export const MSG_DEPOSIT_NEED_MOTES = 'Cần mang đom đóm để nạp đèn';
-export const MSG_DEPOSIT_NEED_LANTERN = 'Đứng gần đèn chưa thắp để nạp';
+export const MSG_DEPOSIT_NEED_LANTERN = 'Đứng gần đèn chưa thắp hoặc chưa đầy dầu để nạp';
 
 /**
  * Thông báo cho cú bấm E/F không có tác dụng (chỉ ở giao diện, không đổi sim).
@@ -27,9 +28,9 @@ export function failureMessage(
   const p = state.player;
 
   const interactEdge = input.interact && !prev.interact;
-  if (interactEdge && !events.some((e) => e.name === 'deposit')) {
+  if (interactEdge && !events.some((e) => e.name === 'deposit' || e.name === 'refuel')) {
     const near = state.lanterns.some(
-      (l) => !l.lit && distXZ(l.pos, p.pos) <= TUNING.interact_radius,
+      (l) => isAccepting(l) && distXZ(l.pos, p.pos) <= TUNING.interact_radius,
     );
     if (!near) return MSG_DEPOSIT_NEED_LANTERN;
     if (p.carried <= 0) return MSG_DEPOSIT_NEED_MOTES;

@@ -8,6 +8,7 @@ import { advance } from './render/timestep';
 import { SUPPORTED_NIGHTS } from './sim/maps';
 import { step } from './sim/step';
 import { DEFAULT_INPUT } from './sim/types';
+import type { Scenario } from './sim/types';
 import { createGame } from './sim/world';
 
 const params = new URLSearchParams(location.search);
@@ -19,6 +20,21 @@ const pickSeed = () => urlSeed ?? Math.floor(Math.random() * 2 ** 31);
 const urlNightRaw = params.get('night');
 const urlNight = urlNightRaw !== null && /^\d+$/.test(urlNightRaw) && SUPPORTED_NIGHTS.includes(Number(urlNightRaw)) ? Number(urlNightRaw) : null;
 
+/**
+ * ?demo=fuel (chỉ trình duyệt, dùng cho ảnh kiểm tra Phase 3): L1 sáng fuel 25 (nhấp nháy), L2 sáng fuel 80,
+ * successful_lights 2 (HUD x/14). Không ảnh hưởng headless.
+ */
+const demoScenario: Scenario =
+  params.get('demo') === 'fuel'
+    ? {
+        player: { carried: 6, successful_lights: 2 },
+        lanterns: [
+          { id: 'L1', lit: true, fuel: 25 },
+          { id: 'L2', lit: true, fuel: 80 },
+        ],
+      }
+    : {};
+
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const world = createWorld(canvas);
 const input = createInput(canvas);
@@ -28,7 +44,7 @@ const hud = createHud(document.querySelector<HTMLElement>('#hud')!);
 let mode: 'menu' | 'playing' | 'ended' = urlNight === null ? 'menu' : 'playing';
 let night = urlNight ?? 1;
 let seed = pickSeed();
-let state = createGame(seed, {}, night);
+let state = createGame(seed, demoScenario, night);
 let accMs = 0;
 
 function startNight(n: number): void {

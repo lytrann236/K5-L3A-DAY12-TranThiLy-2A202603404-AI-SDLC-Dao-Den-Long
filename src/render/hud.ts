@@ -1,4 +1,5 @@
 import { TUNING } from '../sim/contract';
+import { capacity, isAccepting } from '../sim/fuel';
 import { distXZ } from '../sim/geom';
 import type { GameState } from '../sim/types';
 import { NOTICE_MS } from './feedback';
@@ -79,7 +80,7 @@ export function createHud(hud: HTMLElement): Hud {
       const p = state.player;
       const lit = state.lanterns.filter((l) => l.lit).length;
       set('flames', String(p.flames));
-      set('carried', `${p.carried}/${TUNING.carry_capacity}`);
+      set('carried', `${p.carried}/${capacity(p)}`); // Phase 3: đang mang / sức chứa
       set('lanterns', `${lit}/${state.lanterns.length}`);
       set('time', formatTime(state.timeLeft));
       set('score', String(state.score));
@@ -93,7 +94,7 @@ export function createHud(hud: HTMLElement): Hud {
 
       const near =
         state.status === 'playing' &&
-        state.lanterns.some((l) => !l.lit && distXZ(l.pos, p.pos) <= TUNING.interact_radius);
+        state.lanterns.some((l) => isAccepting(l) && distXZ(l.pos, p.pos) <= TUNING.interact_radius);
       nodes.prompt.hidden = !near;
     },
   };
