@@ -131,6 +131,11 @@ export interface Drifter {
   pos: Vec3;
   state: DrifterState;
   stolen: number;
+  /** `idle`: tâm vòng lượn (XZ) và góc hiện tại (rad, ngược chiều kim đồng hồ từ +X). */
+  center: [number, number];
+  angle: number;
+  /** `flee`: số tick bay trốn còn lại; hết thì `removed`. */
+  fleeTicks: number;
 }
 
 export interface Charm {
@@ -194,4 +199,5 @@ export interface GameState {
   prevButtons: Buttons;
   nextMoteId: number;
   nextShadeId: number;
+  nextDrifterId: number;
 }

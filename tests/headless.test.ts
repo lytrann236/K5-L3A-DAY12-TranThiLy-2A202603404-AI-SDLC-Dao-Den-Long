@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runHeadless } from '../src/headless/run';
 import { FormatError, parseArgs, parseInputs, parseScenario } from '../src/headless/parse';
+import { run } from './helpers';
 
 const dir = mkdtempSync(join(tmpdir(), 'ddl-'));
 const tsx = join(process.cwd(), 'node_modules', '.bin', 'tsx');
@@ -178,6 +179,18 @@ describe('Headless', () => {
       '{"lanterns":[{"id":"L1","deposited":11}]}',
     ];
     for (const b of bad) expect(() => parseScenario(b), b).toThrow(FormatError);
+  });
+
+
+  // Chốt định dạng Việc 3 (phase-2.md 4.2): Gió Lạc thiếu state → idle, thiếu stolen → 0.
+  it('AC2-54: drifters[] thiếu state → idle, thiếu stolen → 0 (trong snapshot tick 0)', () => {
+    const sc = parseScenario('{"random_motes":false,"drifters":[{"pos":[5,0,5]},{"id":"D4","pos":[-5,0,5],"state":"flee"}]}', 2);
+    const r = run({ night: 2, ticks: 0, scenario: sc });
+    // Id vắng đặt tiếp sau id lớn nhất có tên (giống quy ước Bóng Mực): D4 có tên → con không tên là D5.
+    expect(r.snap(0).drifters).toEqual([
+      { id: 'D5', pos: [5, 1, 5], state: 'idle', stolen: 0 },
+      { id: 'D4', pos: [-5, 1, 5], state: 'flee', stolen: 0 },
+    ]);
   });
 
   it('parser: kiểm tra kiểu từng trường', () => {

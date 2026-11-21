@@ -94,3 +94,19 @@ export function dropMotes(s: GameState, n: number): void {
     s.motes.push({ id: `M${s.nextMoteId++}`, pos, kind: 'dropped', ttl: DROP_TTL_TICKS });
   }
 }
+
+/**
+ * Gió Lạc bị Tỏa Sáng lúc `flee`: thả `n` đom đóm `dropped` ngay tại vị trí XZ của nó (TTL 480 tick).
+ * Không có mặt đất ở đó thì lấy điểm có mặt đất gần nhất.
+ */
+export function releaseMotes(s: GameState, x: number, z: number, n: number): void {
+  const map = getMap(s.night);
+  let g = map.groundAt(x, z);
+  if (g === null) {
+    [x, z] = map.nearestGround(x, z);
+    g = map.groundAt(x, z) ?? 0;
+  }
+  for (let i = 0; i < n; i++) {
+    s.motes.push({ id: `M${s.nextMoteId++}`, pos: [x, g, z], kind: 'dropped', ttl: DROP_TTL_TICKS });
+  }
+}

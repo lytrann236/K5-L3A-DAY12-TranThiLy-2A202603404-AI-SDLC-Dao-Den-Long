@@ -6,6 +6,7 @@ import {
   TICK_RATE,
 } from './constants';
 import { TUNING } from './contract';
+import { drifterNum, newDrifter } from './drifters';
 import { dirXZ } from './geom';
 import { getMap } from './maps';
 import { mulberry32 } from './rng';
@@ -103,6 +104,7 @@ export function createGame(seed: number, scenario: Scenario = {}, night = 1): Ga
     prevButtons: { jump: false, interact: false, pulse: false, dash: false, pause: false },
     nextMoteId: 1,
     nextShadeId: 1,
+    nextDrifterId: 1,
   };
   const p = s.player;
   const g = map.groundAt(p.pos[0], p.pos[2]);
@@ -152,13 +154,17 @@ export function createGame(seed: number, scenario: Scenario = {}, night = 1): Ga
     s.nextShadeId = Math.max(s.nextShadeId, ...s.shades.map((x) => shadeNum(x.id) + 1));
   }
 
-  // Gió Lạc / Bùa Gió: Đêm 1 không có; scenario có thể đặt (logic ở Việc 3).
-  s.drifters = (scenario.drifters ?? []).map((d, i) => ({
-    id: d.id ?? `D${i + 1}`,
-    pos: [...d.pos] as Vec3,
-    state: d.state ?? 'idle',
-    stolen: d.stolen ?? 0,
-  }));
+  // Gió Lạc: con ngẫu nhiên sinh theo lịch (bước 10); scenario `drifters` đặt sẵn danh sách.
+  // Thiếu `state` → idle, thiếu `stolen` → 0. Con `idle` lượn vòng r 4 m đi qua vị trí đặt (góc 0).
+  if (scenario.drifters) {
+    const named = scenario.drifters.filter((d) => d.id !== undefined).map((d) => drifterNum(d.id!));
+    s.nextDrifterId = Math.max(0, ...named) + 1;
+    s.drifters = scenario.drifters.map((d) =>
+      newDrifter(s, d.id ?? `D${s.nextDrifterId++}`, d.pos, d.state ?? 'idle', d.stolen ?? 0),
+    );
+    s.nextDrifterId = Math.max(s.nextDrifterId, ...s.drifters.map((d) => drifterNum(d.id) + 1));
+  }
+
   s.charms = (scenario.charms ?? []).map((c, i) => ({
     id: c.id ?? `C${i + 1}`,
     pos: [...c.pos] as Vec3,

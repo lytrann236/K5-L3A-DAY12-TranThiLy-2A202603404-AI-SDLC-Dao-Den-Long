@@ -1,5 +1,6 @@
 import { PULSE_CENTER_DY, PULSE_PUSH_TICKS, TICK_RATE } from './constants';
 import { TUNING } from './contract';
+import { pulseDrifters } from './drifters';
 import { dirXZ, dist3 } from './geom';
 import type { GameState, SimEvent, Vec3 } from './types';
 
@@ -11,6 +12,7 @@ export const STUN_TICKS = Math.round(TUNING.pulse_stun_s * TICK_RATE);
  * Tâm = chân Mây + 0.8 m; mục tiêu chốt ngay tick kích hoạt: Bóng Mực có khoảng cách 3D tới tâm
  * ≤ pulse_radius (kể cả đang spawning / recoil / stunned). Mỗi con: stunned 120 tick (làm mới),
  * đẩy lùi tổng pulse_push_m trong 15 tick theo phương ngang Mây → bóng (trùng vị trí → +X), +per_stun.
+ * Sau sự kiện `pulse` mới xét Gió Lạc (có thể sinh `drifter_drop`).
  */
 export function pulse(s: GameState, pressed: boolean, events: SimEvent[]): void {
   const p = s.player;
@@ -29,4 +31,5 @@ export function pulse(s: GameState, pressed: boolean, events: SimEvent[]): void 
     s.score += TUNING.score.per_stun;
   }
   events.push({ name: 'pulse', data: { stunned_ids: stunned } });
+  pulseDrifters(s, center, events);
 }

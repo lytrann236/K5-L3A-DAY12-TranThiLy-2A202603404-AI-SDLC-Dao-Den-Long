@@ -1,5 +1,6 @@
 import { TICK_RATE } from './constants';
 import { TUNING } from './contract';
+import { collideDrifters, moveDrifters, spawnDrifters } from './drifters';
 import { interact, tickSafeTimers, updateSafeZones } from './lanterns';
 import { pickupMotes, spawnMotes, tickMoteTtl } from './motes';
 import { movePlayer, tickPlayerTimers } from './player';
@@ -61,13 +62,16 @@ export function step(s: GameState, input: InputState): SimEvent[] {
   updateSafeZones(s);
   // 7. Tỏa Sáng.
   pulse(s, edges.pulse, events);
-  // 8. Bóng Mực di chuyển.
+  // 8. Bóng Mực và Gió Lạc di chuyển.
   moveShades(s);
-  // 9. Chạm.
+  moveDrifters(s);
+  // 9. Chạm: Gió Lạc cướp trước, rồi Bóng Mực gây hit.
+  collideDrifters(s, events);
   collideShades(s, events);
   // 10. Sinh theo lịch.
   spawnMotes(s);
   spawnShades(s, events);
+  spawnDrifters(s);
   // 11. Thắng / thua.
   checkEnd(s, events);
   return events;

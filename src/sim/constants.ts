@@ -62,3 +62,17 @@ export const N2_BRIDGE_HALF_W = 2;
 export const PAD_RADIUS = 1;
 export const N2_PAD_VY = 14;
 export const N2_PAD_VH = 24;
+
+/** Gió Lạc (ticket-02 Phần 3). */
+export const DRIFTER_SPEED = 7;
+export const DRIFTER_IDLE_SPEED = 2;
+export const DRIFTER_IDLE_RADIUS = 4;
+export const DRIFTER_Y = 1;
+export const DRIFTER_TOUCH_RADIUS = 1.2;
+export const DRIFTER_STEAL_MAX = 3;
+export const DRIFTER_CHASE_MIN_CARRIED = 5;
+export const DRIFTER_CHASE_RADIUS = 15;
+export const DRIFTER_FLEE_TICKS = 240;
+export const DRIFTER_DROP_VANISH_TICKS = 120;
+export const DRIFTER_SPAWN_INTERVAL_TICKS = 1200;
+export const DRIFTER_MAX = 2;
