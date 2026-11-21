@@ -65,7 +65,8 @@ const DROP_PULL_STEPS = 20;
 /**
  * Bị Bóng Mực đánh: `n` đom đóm `dropped` rơi trên vành 1.5–2.5 m quanh Mây (góc và bán kính
  * theo seed), TTL 480 tick. Điểm không có mặt đất thì kéo về phía Mây tới điểm đứng được gần nhất;
- * vẫn không có thì lấy điểm có mặt đất gần nhất. Đặt trên mặt đất tại điểm đó.
+ * vẫn không có thì lấy điểm có mặt đất gần nhất; rơi vào tháp chuông thì đẩy ra mép tháp. Đặt trên
+ * mặt đất tại điểm đó.
  */
 export function dropMotes(s: GameState, n: number): void {
   const map = getMap(s.night);
@@ -91,18 +92,24 @@ export function dropMotes(s: GameState, n: number): void {
       [pos[0], pos[2]] = map.nearestGround(x, z);
       pos[1] = map.groundAt(pos[0], pos[2]) ?? 0;
     }
+    // Rơi vào trong tháp chuông (Đêm 3): đẩy ra mép tháp theo bán kính.
+    const out = map.solidPush?.(pos[0], pos[2], p[0], p[2]);
+    if (out) {
+      [pos[0], pos[2]] = out;
+      pos[1] = map.groundAt(pos[0], pos[2]) ?? 0;
+    }
     s.motes.push({ id: `M${s.nextMoteId++}`, pos, kind: 'dropped', ttl: DROP_TTL_TICKS });
   }
 }
 
 /**
  * Gió Lạc bị Tỏa Sáng lúc `flee`: thả `n` đom đóm `dropped` ngay tại vị trí XZ của nó (TTL 480 tick).
- * Không có mặt đất ở đó thì lấy điểm có mặt đất gần nhất.
+ * Không có mặt đất ở đó (hoặc ở trong tháp chuông) thì lấy điểm đứng được gần nhất.
  */
 export function releaseMotes(s: GameState, x: number, z: number, n: number): void {
   const map = getMap(s.night);
   let g = map.groundAt(x, z);
-  if (g === null) {
+  if (g === null || map.solidPush?.(x, z, x, z)) {
     [x, z] = map.nearestGround(x, z);
     g = map.groundAt(x, z) ?? 0;
   }

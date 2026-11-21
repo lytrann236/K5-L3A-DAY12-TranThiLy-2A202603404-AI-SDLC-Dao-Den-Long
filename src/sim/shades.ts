@@ -43,20 +43,33 @@ export function tickShadeTimers(s: GameState): void {
 
 /**
  * Dời bóng (dx, dz) theo XZ, dừng ở vật cản đầu tiên: mép phạm vi đảo của Đêm và mép vùng an toàn
- * của đèn đã sáng (chỉ chặn khi đi từ ngoài vào). Trả về true nếu bị chặn.
+ * của đèn đã sáng (chỉ chặn khi đi từ ngoài vào). Tháp chuông (Đêm 3) đẩy bóng ra mép (trượt quanh).
+ * Vách tầng không chặn: bóng bay qua, Y theo mặt đất bên dưới. Trả về true nếu bị chặn.
  */
 export function moveShade(s: GameState, sh: Shade, dx: number, dz: number): boolean {
   let t = 1;
-  const te = getMap(s.night).shadeExitT(sh.pos, dx, dz);
+  const map = getMap(s.night);
+  const te = map.shadeExitT(sh.pos, dx, dz);
   if (te !== null) t = Math.min(t, te);
   for (const l of s.lanterns) {
     if (!l.lit) continue;
     const ti = enterCircleT(sh.pos, dx, dz, l.pos, TUNING.safe_radius);
     if (ti !== null) t = Math.min(t, ti);
   }
+  const fromX = sh.pos[0];
+  const fromZ = sh.pos[2];
   sh.pos[0] += dx * t;
   sh.pos[2] += dz * t;
-  return t < 1;
+  // Tháp chuông (Đêm 3): bóng bị đẩy ra mép tháp theo bán kính, tức trượt quanh tháp.
+  const pushed = map.solidPush?.(sh.pos[0], sh.pos[2], fromX, fromZ) ?? null;
+  if (pushed) [sh.pos[0], sh.pos[2]] = pushed;
+  setShadeY(s, sh);
+  return t < 1 || pushed !== null;
+}
+
+/** Bóng Mực bay ở Y = mặt đất bên dưới + 1 (bay qua vách tầng); không có mặt đất thì coi là 0. */
+export function setShadeY(s: GameState, sh: Shade): void {
+  sh.pos[1] = (getMap(s.night).groundAt(sh.pos[0], sh.pos[2]) ?? 0) + SHADE_Y;
 }
 
 // Bước 8: Bóng Mực di chuyển theo trạng thái.
