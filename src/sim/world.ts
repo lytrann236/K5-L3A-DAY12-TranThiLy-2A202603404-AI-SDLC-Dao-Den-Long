@@ -9,7 +9,8 @@ import {
 } from './constants';
 import { TUNING } from './contract';
 import { drifterNum, newDrifter } from './drifters';
-import { dirXZ } from './geom';
+import { FUEL_MAX_U, FUEL_UNIT, lightCost } from './fuel';
+import { dirXZ, distXZ } from './geom';
 import { getMap } from './maps';
 import { mulberry32 } from './rng';
 import type { GameState, Lantern, Scenario, Shade, ShadeState, Vec3 } from './types';
@@ -38,6 +39,8 @@ export function newShade(id: string, x: number, z: number, state: ShadeState, ti
     recoilDir: [1, 0],
     safeTicks: 0,
     safeStep: [0, 0],
+    targetLanternId: null,
+    drainTicks: 0,
   };
 }
 
@@ -91,8 +94,19 @@ export function createGame(seed: number, scenario: Scenario = {}, night = 1): Ga
       respawn: 0,
       launch: null,
       heldVy: null,
+      successfulLights: sp.successful_lights ?? 0,
     },
-    lanterns: map.lanterns.map((l): Lantern => ({ id: l.id, pos: [...l.pos], lit: false, deposited: 0 })),
+    lanterns: map.lanterns.map(
+      (l): Lantern => ({
+        id: l.id,
+        pos: [...l.pos],
+        lit: false,
+        deposited: 0,
+        fuelU: 0,
+        everLit: false,
+        relitCount: 0,
+      }),
+    ),
     shades: [],
     motes: [],
     drifters: [],
@@ -121,9 +135,15 @@ export function createGame(seed: number, scenario: Scenario = {}, night = 1): Ga
     if (l.pos) target.pos = [...l.pos];
     if (l.deposited !== undefined) target.deposited = l.deposited;
     if (l.lit !== undefined) target.lit = l.lit;
-    if (target.lit || target.deposited >= TUNING.lantern_cost) {
+    if (l.ever_lit !== undefined) target.everLit = l.ever_lit;
+    // Phase 3: đèn sáng (đặt sẵn hoặc nạp đủ giá thắp) có fuel (mặc định 100) và ever_lit true.
+    // Đèn đặt sẵn không tính vào successful_lights. fuel của đèn tắt bị bỏ qua.
+    const cost = lightCost(target);
+    if (target.lit || target.deposited >= cost) {
       target.lit = true;
-      target.deposited = TUNING.lantern_cost;
+      target.deposited = cost;
+      target.everLit = true;
+      target.fuelU = l.fuel !== undefined ? Math.round(l.fuel * FUEL_UNIT) : FUEL_MAX_U;
     }
   }
 
@@ -153,6 +173,12 @@ export function createGame(seed: number, scenario: Scenario = {}, night = 1): Ga
       const sh = newShade(x.id ?? `S${s.nextShadeId++}`, x.pos[0], x.pos[2], state, ticks);
       sh.pos[1] = (map.groundAt(sh.pos[0], sh.pos[2]) ?? 0) + SHADE_Y; // Y = mặt đất bên dưới + 1
       if (state === 'recoil') sh.recoilDir = dirXZ(p.pos, sh.pos);
+      if (state === 'drain') {
+        // target_lantern_id vắng → đèn gần nhất (XZ, hòa id nhỏ).
+        let best = s.lanterns[0];
+        for (const l of s.lanterns) if (distXZ(l.pos, sh.pos) < distXZ(best.pos, sh.pos)) best = l;
+        sh.targetLanternId = x.target_lantern_id ?? best.id;
+      }
       return sh;
     });
     s.nextShadeId = Math.max(s.nextShadeId, ...s.shades.map((x) => shadeNum(x.id) + 1));

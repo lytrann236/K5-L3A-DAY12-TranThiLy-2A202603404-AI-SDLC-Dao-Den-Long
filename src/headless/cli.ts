@@ -1,4 +1,4 @@
-// Headless CLI theo Test Contract v1.1:
+// Headless CLI theo Test Contract v1.2:
 //   --seed <int> --night 1|2|3 [--scenario f.json] [--inputs f.json] --ticks <int> --out f.jsonl
 //   [--snapshot-every <int, mặc định 10>]
 // Đêm ngoài SUPPORTED_NIGHTS → mã thoát 2.

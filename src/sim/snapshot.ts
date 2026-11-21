@@ -1,4 +1,5 @@
 import { TICK_RATE } from './constants';
+import { capacity, fuelOut } from './fuel';
 import type { GameState, Vec3 } from './types';
 
 /** Làm tròn 3 chữ số thập phân (đổi -0 thành 0). */
@@ -15,7 +16,7 @@ export function outputState(s: GameState): string {
   return s.status === 'playing' && s.paused ? 'paused' : s.status;
 }
 
-/** Dòng snapshot theo Test Contract mục E (v1.1). */
+/** Dòng snapshot theo Test Contract mục E (v1.2). */
 export function toSnapshot(s: GameState) {
   const p = s.player;
   return {
@@ -37,12 +38,16 @@ export function toSnapshot(s: GameState) {
       dash_cd_s: sec(p.dashCooldown),
       pulse_cd_s: sec(p.pulseCooldown),
       charm_s: sec(p.charm),
+      capacity: capacity(p),
     },
     lanterns: s.lanterns.map((l) => ({
       id: l.id,
       pos: r3v(l.pos),
       lit: l.lit,
       deposited: l.deposited,
+      fuel: fuelOut(l),
+      ever_lit: l.everLit,
+      relit_count: l.relitCount,
     })),
     shades: s.shades.map((sh) => ({ id: sh.id, pos: r3v(sh.pos), state: sh.state })),
     drifters: s.drifters.map((d) => ({ id: d.id, pos: r3v(d.pos), state: d.state, stolen: d.stolen })),

@@ -6,9 +6,10 @@ import { interact, tickSafeTimers, updateSafeZones } from './lanterns';
 import { pickupMotes, spawnMotes, tickMoteTtl } from './motes';
 import { movePlayer, tickPlayerTimers } from './player';
 import { pulse } from './pulse';
+import { FUEL_UNIT, tickFuel } from './fuel';
 import { collideShades, moveShades, spawnShades, tickShadeTimers } from './shades';
 import { tickWind } from './wind';
-import type { Buttons, GameState, InputState, SimEvent } from './types';
+import type { Buttons, EndReason, GameState, InputState, SimEvent } from './types';
 
 /** Số tick gameplay còn lại, tính bằng số nguyên (không trừ số thực). */
 const ticksLeft = (s: GameState) => s.durationTicks - s.simTick;
@@ -56,6 +57,8 @@ export function step(s: GameState, input: InputState): SimEvent[] {
   tickMoteTtl(s);
   tickCharms(s);
   tickWind(s);
+  // 2b. Trừ dầu (hao + bị hút), rồi đèn fuel ≤ 0 tắt (ticket-03 mục 3).
+  tickFuel(s, events);
   // 3. Di chuyển Mây (nhảy, lướt, bục nhảy, gió) rồi kiểm tra rơi khỏi đảo.
   movePlayer(s, input, edges.jump, edges.dash, events);
   // 4. Nhặt đom đóm và bùa.
@@ -82,27 +85,30 @@ export function step(s: GameState, input: InputState): SimEvent[] {
   return events;
 }
 
-function endGame(
-  s: GameState,
-  events: SimEvent[],
-  result: 'won' | 'lost',
-  reason: 'all_lit' | 'dawn' | 'no_flames',
-): void {
+function endGame(s: GameState, events: SimEvent[], result: 'won' | 'lost', reason: EndReason): void {
   s.status = result;
   events.push({ name: 'game_over', data: { result, reason } });
 }
 
-// 11. Hết lửa → luôn thua; còn sống và đủ đèn → thắng (kể cả đúng tick hết giờ); hết giờ → dawn.
+/** Số đèn sáng cần ở bình minh = ceil(win_ratio × tổng) (trừ EPS chống sai số 0.6 × n). */
+export const lanternsNeeded = (total: number) => Math.ceil(TUNING.win_ratio * total - 1e-9);
+
+// 11 (Phase 3). Sau mọi cập nhật của tick. Hết lửa → luôn thua no_flames (kể cả tick bình minh).
+// Hết giờ → đèn sáng ≥ ceil(0.6 × tổng) thì thắng dawn_survived (+50 + floor(fuel) mỗi đèn sáng,
+// +50 mỗi lửa), không thì thua dawn. Không còn thắng sớm.
 function checkEnd(s: GameState, events: SimEvent[]): void {
   const p = s.player;
   if (p.flames <= 0) {
     endGame(s, events, 'lost', 'no_flames');
-  } else if (s.lanterns.every((l) => l.lit)) {
-    s.score +=
-      TUNING.score.per_second_left * Math.max(0, Math.floor(ticksLeft(s) / TICK_RATE)) +
-      TUNING.score.per_flame_left * p.flames;
-    endGame(s, events, 'won', 'all_lit');
-  } else if (ticksLeft(s) <= 0) {
+    return;
+  }
+  if (ticksLeft(s) > 0) return;
+  const lit = s.lanterns.filter((l) => l.lit);
+  if (lit.length >= lanternsNeeded(s.lanterns.length)) {
+    for (const l of lit) s.score += TUNING.score.per_lit_at_dawn + Math.floor(l.fuelU / FUEL_UNIT);
+    s.score += TUNING.score.per_flame_left * p.flames;
+    endGame(s, events, 'won', 'dawn_survived');
+  } else {
     endGame(s, events, 'lost', 'dawn');
   }
 }

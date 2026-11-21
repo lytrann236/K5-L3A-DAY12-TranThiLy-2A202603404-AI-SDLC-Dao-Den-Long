@@ -2,7 +2,7 @@ import { TUNING } from '../sim/contract';
 import { getMap } from '../sim/maps';
 import { lanternIds } from '../sim/world';
 import { DRIFTER_STATES, SHADE_STATES } from '../sim/types';
-import type { DrifterState, InputFrame, Scenario, ShadeState, Vec3 } from '../sim/types';
+import type { DrifterState, InputFrame, Scenario, ScenarioLantern, ScenarioShade, Vec3 } from '../sim/types';
 
 /** Lỗi tham số / định dạng file → CLI thoát với mã 2. */
 export class FormatError extends Error {}
@@ -136,7 +136,7 @@ function arr(v: unknown, where: string): unknown[] {
   return v;
 }
 
-/** File scenario (Test Contract mục D, v1.1). Id đèn kiểm theo bản đồ của Đêm. */
+/** File scenario (Test Contract mục D, v1.2). Id đèn kiểm theo bản đồ của Đêm. */
 export function parseScenario(text: string, night = 1): Scenario {
   const root = parseJson(text, 'scenario');
   if (!isObj(root)) throw new FormatError('scenario phải là đối tượng JSON');
@@ -154,6 +154,7 @@ export function parseScenario(text: string, night = 1): Scenario {
       'dash_cd_ticks',
       'pulse_cd_ticks',
       'charm_ticks',
+      'successful_lights',
     ] as const) {
       if (p[k] !== undefined) sc.player[k] = nonNegInt(p[k], `scenario.player.${k}`);
     }
@@ -172,14 +173,19 @@ export function parseScenario(text: string, night = 1): Scenario {
     sc.shades = arr(root.shades, 'scenario.shades').map((x, i) => {
       const at = `scenario.shades[${i}]`;
       if (!isObj(x)) throw new FormatError(`${at} phải là đối tượng`);
-      const out: { id?: string; pos: Vec3; state?: ShadeState; state_ticks_left?: number } = {
-        pos: vec3(x.pos, `${at}.pos`),
-      };
+      const out: ScenarioShade = { pos: vec3(x.pos, `${at}.pos`) };
       const id = optId(x.id, `${at}.id`, seen);
       if (id !== undefined) out.id = id;
       if (x.state !== undefined) out.state = oneOf(x.state, SHADE_STATES, `${at}.state`);
       if (x.state_ticks_left !== undefined) {
         out.state_ticks_left = nonNegInt(x.state_ticks_left, `${at}.state_ticks_left`);
+      }
+      if (x.target_lantern_id !== undefined) {
+        const ids = lanternIds(night);
+        if (typeof x.target_lantern_id !== 'string' || !ids.includes(x.target_lantern_id)) {
+          throw new FormatError(`${at}.target_lantern_id phải là một trong ${ids.join(', ')}`);
+        }
+        out.target_lantern_id = x.target_lantern_id;
       }
       return out;
     });
@@ -236,7 +242,7 @@ export function parseScenario(text: string, night = 1): Scenario {
       if (typeof x.id !== 'string' || !ids.includes(x.id)) {
         throw new FormatError(`${at}.id phải là một trong ${ids.join(', ')}`);
       }
-      const out: { id: string; pos?: Vec3; deposited?: number; lit?: boolean } = { id: x.id };
+      const out: ScenarioLantern = { id: x.id };
       if (x.pos !== undefined) out.pos = vec3(x.pos, `${at}.pos`);
       if (x.deposited !== undefined) {
         if (!isInt(x.deposited) || x.deposited < 0 || x.deposited > TUNING.lantern_cost) {
@@ -245,6 +251,13 @@ export function parseScenario(text: string, night = 1): Scenario {
         out.deposited = x.deposited;
       }
       if (x.lit !== undefined) out.lit = bool(x.lit, `${at}.lit`);
+      if (x.ever_lit !== undefined) out.ever_lit = bool(x.ever_lit, `${at}.ever_lit`);
+      if (x.fuel !== undefined) {
+        if (!isNum(x.fuel) || x.fuel < 0 || x.fuel > TUNING.fuel_max) {
+          throw new FormatError(`${at}.fuel phải là số trong [0, ${TUNING.fuel_max}]`);
+        }
+        out.fuel = x.fuel;
+      }
       return out;
     });
   }

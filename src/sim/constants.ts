@@ -114,3 +114,11 @@ export const WIND_WARN_TICKS = 120;
 export const WIND_SPEED = 2;
 /** Gió dùng luồng RNG riêng sinh từ seed (seed XOR hằng này), để bật/tắt gió không đổi lịch sinh. */
 export const WIND_SEED_SALT = 0x5f3759df;
+
+/** Phase 3 (ticket-03): sức chứa +2 mỗi lần thắp thành công. */
+export const CAPACITY_PER_LIGHT = 2;
+/** Bóng Mực `wander` cách đèn yếu ≤ 2 m (XZ) thì `drain`; `drain` mà Mây ≤ 6 m thì `chase`. */
+export const DRAIN_RADIUS = 2;
+export const DRAIN_CHASE_RADIUS = 6;
+/** `fuel_drain` phát mỗi 60 tick hút. */
+export const FUEL_DRAIN_EVENT_TICKS = 60;

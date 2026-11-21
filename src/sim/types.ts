@@ -35,14 +35,14 @@ export const DEFAULT_INPUT: Readonly<InputState> = {
 
 export type Buttons = Pick<InputState, 'jump' | 'interact' | 'pulse' | 'dash' | 'pause'>;
 
-/** Trạng thái Bóng Mực (tên bắt buộc từ Test Contract v1.1). */
-export type ShadeState = 'spawning' | 'wander' | 'chase' | 'recoil' | 'stunned';
-export const SHADE_STATES: readonly ShadeState[] = ['spawning', 'wander', 'chase', 'recoil', 'stunned'];
+/** Trạng thái Bóng Mực (tên bắt buộc từ Test Contract v1.2: v1.1 + `drain`). */
+export type ShadeState = 'spawning' | 'wander' | 'chase' | 'recoil' | 'stunned' | 'drain';
+export const SHADE_STATES: readonly ShadeState[] = ['spawning', 'wander', 'chase', 'recoil', 'stunned', 'drain'];
 
 export type DrifterState = 'idle' | 'chase' | 'flee' | 'removed';
 export const DRIFTER_STATES: readonly DrifterState[] = ['idle', 'chase', 'flee', 'removed'];
 
-/** File scenario (Test Contract mục D, v1.1). Mọi trường đều tùy chọn. */
+/** File scenario (Test Contract mục D, v1.2). Mọi trường đều tùy chọn. */
 export interface Scenario {
   player?: {
     pos?: Vec3;
@@ -52,17 +52,35 @@ export interface Scenario {
     dash_cd_ticks?: number;
     pulse_cd_ticks?: number;
     charm_ticks?: number;
+    successful_lights?: number;
   };
   random_motes?: boolean;
   random_shades?: boolean;
   random_drifters?: boolean;
   wind_enabled?: boolean;
   motes?: Vec3[];
-  shades?: { id?: string; pos: Vec3; state?: ShadeState; state_ticks_left?: number }[];
+  shades?: ScenarioShade[];
   drifters?: { id?: string; pos: Vec3; state?: DrifterState; stolen?: number }[];
   charms?: { id?: string; pos?: Vec3; available?: boolean; respawn_ticks?: number }[];
-  lanterns?: { id: string; pos?: Vec3; deposited?: number; lit?: boolean }[];
+  lanterns?: ScenarioLantern[];
   time_left_s?: number;
+}
+
+export interface ScenarioShade {
+  id?: string;
+  pos: Vec3;
+  state?: ShadeState;
+  state_ticks_left?: number;
+  target_lantern_id?: string;
+}
+
+export interface ScenarioLantern {
+  id: string;
+  pos?: Vec3;
+  deposited?: number;
+  lit?: boolean;
+  fuel?: number;
+  ever_lit?: boolean;
 }
 
 export interface Player {
@@ -91,6 +109,8 @@ export interface Player {
   launch: [number, number] | null;
   /** Vy lúc bắt đầu lướt trong khi bay từ bục (lướt giữ độ cao); hết lướt thì bay tiếp với vy này. */
   heldVy: number | null;
+  /** Số lần thắp thành công trong Đêm (cả thắp lại); quyết định sức chứa. */
+  successfulLights: number;
 }
 
 export interface Lantern {
@@ -98,6 +118,10 @@ export interface Lantern {
   pos: Vec3;
   lit: boolean;
   deposited: number;
+  /** Nhiên liệu theo đơn vị nguyên 1/60 fuel (0…fuel_max × 60). Đèn tắt luôn 0. */
+  fuelU: number;
+  everLit: boolean;
+  relitCount: number;
 }
 
 export interface Shade {
@@ -114,6 +138,9 @@ export interface Shade {
   /** Bị đẩy ra khỏi vùng an toàn: số tick còn lại và độ dời mỗi tick (XZ). Không gây hit khi > 0. */
   safeTicks: number;
   safeStep: [number, number];
+  /** `drain`: id đèn đang hút (null ở trạng thái khác) và số tick đã hút (để phát fuel_drain). */
+  targetLanternId: string | null;
+  drainTicks: number;
 }
 
 export type MoteKind = 'random' | 'dropped';
@@ -146,12 +173,17 @@ export interface Charm {
   respawn: number;
 }
 
+export type EndReason = 'dawn_survived' | 'dawn' | 'no_flames';
+
 export type GameStatus = 'playing' | 'won' | 'lost';
 
 export type SimEvent =
   | { name: 'mote_picked'; data: { carried: number } }
   | { name: 'deposit'; data: { lantern_id: string; amount: number; deposited: number } }
-  | { name: 'lantern_lit'; data: { lantern_id: string } }
+  | { name: 'lantern_lit'; data: { lantern_id: string; relight: boolean } }
+  | { name: 'refuel'; data: { lantern_id: string; amount: number; fuel: number } }
+  | { name: 'lantern_out'; data: { lantern_id: string } }
+  | { name: 'fuel_drain'; data: { lantern_id: string; shade_id: string; fuel: number } }
   | { name: 'pulse'; data: { stunned_ids: string[] } }
   | { name: 'player_hit'; data: { by: 'shade'; flames: number; dropped: number } }
   | { name: 'player_hit'; data: { by: 'fall'; flames: number; dropped: number; lost: number } }
@@ -165,7 +197,7 @@ export type SimEvent =
   | { name: 'resumed'; data: Record<string, never> }
   | {
       name: 'game_over';
-      data: { result: 'won' | 'lost'; reason: 'all_lit' | 'dawn' | 'no_flames' };
+      data: { result: 'won' | 'lost'; reason: EndReason };
     };
 
 export interface GameState {

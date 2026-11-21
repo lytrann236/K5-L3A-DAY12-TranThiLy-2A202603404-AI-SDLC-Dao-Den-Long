@@ -7,6 +7,7 @@ import {
   PICKUP_MAX_DY,
 } from './constants';
 import { TUNING } from './contract';
+import { capacity } from './fuel';
 import { distXZ } from './geom';
 import { getMap } from './maps';
 import type { GameState, SimEvent } from './types';
@@ -33,7 +34,7 @@ export function pickupMotes(s: GameState, events: SimEvent[]): void {
   const kept = [];
   for (const m of s.motes) {
     if (
-      p.carried < TUNING.carry_capacity &&
+      p.carried < capacity(p) &&
       distXZ(m.pos, p.pos) <= TUNING.pickup_radius &&
       Math.abs(p.pos[1] - m.pos[1]) <= PICKUP_MAX_DY
     ) {
