@@ -51,7 +51,7 @@ export function step(s: GameState, input: InputState): SimEvent[] {
   tickShadeTimers(s);
   tickSafeTimers(s);
   tickMoteTtl(s);
-  // 3. Di chuyển Mây (nhảy, lướt) rồi kiểm tra rơi khỏi đảo.
+  // 3. Di chuyển Mây (nhảy, lướt, bục nhảy) rồi kiểm tra rơi khỏi đảo.
   movePlayer(s, input, edges.jump, edges.dash, events);
   // 4. Nhặt đom đóm.
   pickupMotes(s, events);

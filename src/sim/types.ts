@@ -87,6 +87,10 @@ export interface Player {
   charm: number;
   /** Số tick chờ hồi sinh còn lại sau khi rơi khỏi đảo (0 = không chờ). */
   respawn: number;
+  /** Đang bay từ bục nhảy: vận tốc ngang phóng [vx, vz] giữ tới khi chạm đất; null = không bay. */
+  launch: [number, number] | null;
+  /** Vy lúc bắt đầu lướt trong khi bay từ bục (lướt giữ độ cao); hết lướt thì bay tiếp với vy này. */
+  heldVy: number | null;
 }
 
 export interface Lantern {

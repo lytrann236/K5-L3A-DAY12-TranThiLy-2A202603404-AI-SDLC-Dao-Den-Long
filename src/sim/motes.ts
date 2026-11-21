@@ -7,7 +7,7 @@ import {
   PICKUP_MAX_DY,
 } from './constants';
 import { TUNING } from './contract';
-import { clampToDisk, distXZ } from './geom';
+import { distXZ } from './geom';
 import { getMap } from './maps';
 import type { GameState, SimEvent } from './types';
 
@@ -65,7 +65,7 @@ const DROP_PULL_STEPS = 20;
 /**
  * Bị Bóng Mực đánh: `n` đom đóm `dropped` rơi trên vành 1.5–2.5 m quanh Mây (góc và bán kính
  * theo seed), TTL 480 tick. Điểm không có mặt đất thì kéo về phía Mây tới điểm đứng được gần nhất;
- * vẫn không có thì kẹp vào phạm vi đảo. Đặt trên mặt đất tại điểm đó.
+ * vẫn không có thì lấy điểm có mặt đất gần nhất. Đặt trên mặt đất tại điểm đó.
  */
 export function dropMotes(s: GameState, n: number): void {
   const map = getMap(s.night);
@@ -88,7 +88,7 @@ export function dropMotes(s: GameState, n: number): void {
     }
     const pos: [number, number, number] = [x, g ?? 0, z];
     if (g === null) {
-      clampToDisk(pos, map.shadeBound);
+      [pos[0], pos[2]] = map.nearestGround(x, z);
       pos[1] = map.groundAt(pos[0], pos[2]) ?? 0;
     }
     s.motes.push({ id: `M${s.nextMoteId++}`, pos, kind: 'dropped', ttl: DROP_TTL_TICKS });

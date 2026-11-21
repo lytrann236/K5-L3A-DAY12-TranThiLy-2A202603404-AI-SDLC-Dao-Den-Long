@@ -47,6 +47,7 @@ export interface EndLine {
 export const quiet = (sc: Scenario = {}): Scenario => ({
   random_motes: false,
   random_shades: false,
+  random_drifters: false,
   motes: [],
   shades: [],
   ...sc,
@@ -57,9 +58,16 @@ export const quiet = (sc: Scenario = {}): Scenario => ({
  * `events` bỏ sự kiện `night_start` ở tick 0 (luôn có, v1.1) để các test luật chỉ so sự kiện
  * gameplay; `allEvents` giữ nguyên toàn bộ (test định dạng dùng cái này).
  */
-export function run(opts: { scenario?: Scenario; frames?: InputFrame[]; ticks: number; seed?: number }) {
+export function run(opts: {
+  scenario?: Scenario;
+  frames?: InputFrame[];
+  ticks: number;
+  seed?: number;
+  night?: number;
+}) {
   const lines = runHeadless({
     seed: opts.seed ?? 1,
+    night: opts.night ?? 1,
     ticks: opts.ticks,
     snapshotEvery: 1,
     scenario: opts.scenario,

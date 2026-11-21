@@ -86,6 +86,8 @@ export function createGame(seed: number, scenario: Scenario = {}, night = 1): Ga
       dashDir: [...map.startFacing],
       charm: sp.charm_ticks ?? 0,
       respawn: 0,
+      launch: null,
+      heldVy: null,
     },
     lanterns: map.lanterns.map((l): Lantern => ({ id: l.id, pos: [...l.pos], lit: false, deposited: 0 })),
     shades: [],

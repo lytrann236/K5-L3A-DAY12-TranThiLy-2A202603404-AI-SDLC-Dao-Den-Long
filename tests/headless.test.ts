@@ -75,18 +75,21 @@ describe('Headless', () => {
     expect(cli(['--seed', '1', '--night', '1', '--ticks', '5', '--out', out, '--bogus', '1']).code).toBe(2);
   });
 
-  // Sửa theo phase-2.md mục 2: "--night nhận 1, 2, 3". Ngoài 1…3 → mã 2. Đêm 2/3 chưa cài đặt
-  // (Việc 3/4) nên tạm thời CLI thoát mã 2 với thông báo "chưa hỗ trợ".
-  it('AC2-51: --night ngoài 1…3 → mã 2; --night 2/3 tạm "chưa hỗ trợ" (mã 2)', () => {
+  // Sửa theo phase-2.md mục 2: "--night nhận 1, 2, 3". Ngoài 1…3 → mã 2. Việc 3 cài Đêm 2 nên
+  // --night 2 chạy được (mã 0); Đêm 3 chưa cài (Việc 4) nên tạm thoát mã 2 "chưa hỗ trợ".
+  it('AC2-51: --night ngoài 1…3 → mã 2; --night 2 chạy được; --night 3 tạm "chưa hỗ trợ" (mã 2)', () => {
     const out = join(dir, 'x.jsonl');
     for (const n of ['0', '4', '-1', '1.5']) {
       expect(cli(['--seed', '1', '--night', n, '--ticks', '5', '--out', out]).code).toBe(2);
     }
-    for (const n of ['2', '3']) {
-      const r = cli(['--seed', '1', '--night', n, '--ticks', '5', '--out', out]);
-      expect(r.code).toBe(2);
-      expect(r.stderr).toMatch(/chưa hỗ trợ/);
-    }
+    const n2 = cli(['--seed', '1', '--night', '2', '--ticks', '5', '--out', out]);
+    expect(n2.code).toBe(0);
+    const n2lines = readFileSync(out, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    expect(n2lines[0]).toMatchObject({ type: 'snapshot', night: 2, time_left_s: 330 });
+    expect(n2lines[1]).toEqual({ type: 'event', tick: 0, name: 'night_start', data: { night: 2 } });
+    const n3 = cli(['--seed', '1', '--night', '3', '--ticks', '5', '--out', out]);
+    expect(n3.code).toBe(2);
+    expect(n3.stderr).toMatch(/chưa hỗ trợ/);
     expect(parseArgs(['--seed', '1', '--night', '3', '--ticks', '1', '--out', 'o']).night).toBe(3);
     expect(() => parseArgs(['--seed', '1', '--night', '4', '--ticks', '1', '--out', 'o'])).toThrow(FormatError);
   });

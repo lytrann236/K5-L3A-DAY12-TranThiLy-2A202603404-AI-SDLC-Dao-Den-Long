@@ -51,3 +51,14 @@ export const SHADE_SPAWN_MIN_DIST = 15;
 /** Rơi khỏi đảo: Y < −10; chờ 60 tick rồi hồi sinh. */
 export const FALL_Y = -10;
 export const RESPAWN_WAIT_TICKS = 60;
+
+/** Đêm 2 — Đảo Cau: hai đảo r 28 tâm (0,0,0) và (70,0,0), cầu tre x ∈ [26, 44], z ∈ [−2, 2]. */
+export const N2_ISLAND_RADIUS = 28;
+export const N2_ISLAND_B_X = 70;
+export const N2_BRIDGE_X: readonly [number, number] = [26, 44];
+export const N2_BRIDGE_HALF_W = 2;
+
+/** Bục nhảy: hình tròn bán kính 1 m. Đêm 2: vy 14 m/s, ngang 24 m/s về tâm đảo kia. */
+export const PAD_RADIUS = 1;
+export const N2_PAD_VY = 14;
+export const N2_PAD_VH = 24;

@@ -11,7 +11,7 @@ import {
   TICK_RATE,
 } from './constants';
 import { TUNING } from './contract';
-import { dirXZ, distXZ, enterCircleT, exitDiskT } from './geom';
+import { dirXZ, distXZ, enterCircleT } from './geom';
 import { getMap } from './maps';
 import { dropMotes } from './motes';
 import { INVULN_TICKS } from './player';
@@ -47,7 +47,7 @@ export function tickShadeTimers(s: GameState): void {
  */
 export function moveShade(s: GameState, sh: Shade, dx: number, dz: number): boolean {
   let t = 1;
-  const te = exitDiskT(sh.pos, dx, dz, getMap(s.night).shadeBound);
+  const te = getMap(s.night).shadeExitT(sh.pos, dx, dz);
   if (te !== null) t = Math.min(t, te);
   for (const l of s.lanterns) {
     if (!l.lit) continue;

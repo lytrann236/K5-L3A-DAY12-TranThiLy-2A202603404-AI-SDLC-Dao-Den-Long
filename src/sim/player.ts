@@ -8,7 +8,7 @@ import {
   TICK_RATE,
 } from './constants';
 import { TUNING } from './contract';
-import { clampToDisk } from './geom';
+import { clampToDisk, distXZ } from './geom';
 import { getMap } from './maps';
 import type { GameState, InputState, SimEvent } from './types';
 
@@ -47,6 +47,9 @@ export function worldMove(input: InputState): [number, number] {
  * - Nhảy: chỉ khi chạm đất; quỹ đạo tích phân chính xác với g không đổi (đỉnh 1.225 m, 42 tick).
  * - Lướt: 12 tick × 14 m/s theo hướng move (đứng yên → hướng quay mặt); vy = 0, không trọng lực;
  *   bấm khi đang lướt bị bỏ qua; nhảy trong lúc lướt bị bỏ qua.
+ * - Bục nhảy: đầu bước, chân Mây đứng trên bục (chạm đất, XZ ≤ 1 m, không đang lướt) → bắn lên với
+ *   vận tốc phóng ngay tick này. Phần ngang giữ tới khi chạm đất, `move` không ghi đè; vẫn lướt được
+ *   (lướt giữ độ cao, hết lướt thì bay tiếp với vận tốc phóng và vy lúc bắt đầu lướt).
  * - Rơi: Y < −10 → player_hit fall (đúng 1 lần, bỏ qua bất tử), chờ 60 tick rồi hồi sinh.
  */
 export function movePlayer(
@@ -75,10 +78,24 @@ export function movePlayer(
   const wl = Math.hypot(wx, wz);
   if (wl > 0) p.facing = [wx / wl, wz / wl];
 
+  // Bục nhảy: phóng ngay tick này (giống nhảy), ưu tiên hơn nút nhảy.
+  let launchVy: number | null = null;
+  if (p.grounded && p.dashTicks === 0) {
+    for (const pad of map.pads) {
+      if (Math.abs(p.pos[1] - pad.pos[1]) <= EPS && distXZ(p.pos, pad.pos) <= pad.radius) {
+        p.launch = [pad.vel[0], pad.vel[2]];
+        launchVy = pad.vel[1];
+        p.grounded = false;
+        break;
+      }
+    }
+  }
+
   if (dash && p.dashTicks === 0 && p.dashCooldown === 0) {
     p.dashTicks = DASH_TICKS;
     p.dashDir = [...p.facing];
     p.dashCooldown = p.charm > 0 ? 0 : DASH_COOLDOWN_TICKS;
+    if (p.launch) p.heldVy = launchVy ?? p.vel[1];
     events.push({ name: 'dash', data: {} });
   }
 
@@ -89,6 +106,9 @@ export function movePlayer(
   } else {
     const speed = p.charm > 0 ? CHARM_RUN_SPEED : TUNING.player_speed;
     let vy = p.grounded ? 0 : p.vel[1];
+    if (launchVy !== null) vy = launchVy;
+    else if (p.heldVy !== null) vy = p.heldVy;
+    p.heldVy = null;
     if (jump && p.grounded) {
       vy = JUMP_SPEED;
       p.grounded = false;
@@ -97,7 +117,7 @@ export function movePlayer(
       p.pos[1] += vy * DT - 0.5 * GRAVITY * DT * DT;
       vy -= GRAVITY * DT;
     }
-    p.vel = [wx * speed, vy, wz * speed];
+    p.vel = p.launch ? [p.launch[0], vy, p.launch[1]] : [wx * speed, vy, wz * speed];
   }
   p.pos[0] += p.vel[0] * DT;
   p.pos[2] += p.vel[2] * DT;
@@ -111,6 +131,8 @@ export function movePlayer(
     p.pos[1] = g;
     p.vel[1] = 0;
     p.grounded = true;
+    p.launch = null;
+    p.heldVy = null;
   }
 
   if (TUNING.fall_enabled && p.pos[1] < FALL_Y - EPS) {
@@ -119,6 +141,8 @@ export function movePlayer(
     p.carried = 0;
     p.vel = [0, 0, 0];
     p.dashTicks = 0;
+    p.launch = null;
+    p.heldVy = null;
     p.respawn = RESPAWN_WAIT_TICKS;
     events.push({ name: 'player_hit', data: { by: 'fall', flames: p.flames, dropped: 0, lost } });
   }
