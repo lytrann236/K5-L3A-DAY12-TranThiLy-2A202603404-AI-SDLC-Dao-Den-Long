@@ -3,6 +3,7 @@ import { failureMessage } from './render/feedback';
 import { createHud } from './render/hud';
 import { createInput } from './render/input';
 import { createMenu } from './render/menu';
+import { runBench } from './render/bench';
 import { createWorld } from './render/scene';
 import { advance } from './render/timestep';
 import { SUPPORTED_NIGHTS } from './sim/maps';
@@ -41,7 +42,9 @@ const input = createInput(canvas);
 const hud = createHud(document.querySelector<HTMLElement>('#hud')!);
 
 /** 'menu': chưa chơi; 'playing': sim chạy (kể cả khi sim tạm dừng, xem state.paused); 'ended': thắng/thua. */
-let mode: 'menu' | 'playing' | 'ended' = urlNight === null ? 'menu' : 'playing';
+/** ?bench=1: chế độ đo hiệu năng (Phase 4), cảnh chuẩn riêng, không có menu/HUD. */
+const benchMode = params.get('bench') === '1';
+let mode: 'menu' | 'playing' | 'ended' = urlNight === null && !benchMode ? 'menu' : 'playing';
 let night = urlNight ?? 1;
 let seed = pickSeed();
 let state = createGame(seed, demoScenario, night);
@@ -118,4 +121,9 @@ function frame(now: number): void {
   hud.update(state, seed, now);
   requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
+if (benchMode) {
+  document.querySelector<HTMLElement>('#hud')!.hidden = true;
+  runBench(world, params);
+} else {
+  requestAnimationFrame(frame);
+}

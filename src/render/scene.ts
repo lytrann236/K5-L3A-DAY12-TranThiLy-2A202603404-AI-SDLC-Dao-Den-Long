@@ -72,7 +72,14 @@ const FUEL_LOW = 0xff5a5f;
 export interface World {
   /** Dựng lại hình học cho Đêm 1/2/3 (không làm gì nếu Đêm không đổi). */
   setNight(night: number): void;
-  render(state: GameState, timeSec: number, yawDeg: number, pitchDeg: number): void;
+  /** `cam` (chỉ dùng cho bench): đặt camera tại `pos`, nhìn vào `look`, thay cho camera góc nhìn thứ ba. */
+  render(
+    state: GameState,
+    timeSec: number,
+    yawDeg: number,
+    pitchDeg: number,
+    cam?: { pos: readonly [number, number, number]; look: readonly [number, number, number] },
+  ): void;
   resize(): void;
 }
 
@@ -327,7 +334,7 @@ export function createWorld(canvas: HTMLCanvasElement): World {
 
     setNight: buildNight,
 
-    render(state, t, yawDeg, pitchDeg) {
+    render(state, t, yawDeg, pitchDeg, cam) {
       buildNight(state.night);
       const litCount = state.lanterns.filter((l) => l.lit).length;
       const k = litCount / Math.max(1, state.lanterns.length);
@@ -424,7 +431,13 @@ export function createWorld(canvas: HTMLCanvasElement): World {
       }
       prune(charmViews, charmIds);
 
-      placeCamera(camera, p.pos, yawDeg, pitchDeg, camDistance);
+      if (cam) {
+        camera.position.set(cam.pos[0], cam.pos[1], cam.pos[2]);
+        camera.lookAt(cam.look[0], cam.look[1], cam.look[2]);
+        camera.updateMatrixWorld();
+      } else {
+        placeCamera(camera, p.pos, yawDeg, pitchDeg, camDistance);
+      }
       renderer.render(scene, camera);
     },
   };
