@@ -110,4 +110,4 @@ Mỗi chỗ sửa trong `tests/` có comment `Phase 3:` ghi lý do. Không có t
 - Test cũ bị thay: sửa kèm comment "Phase 3:", không skip test nào.
 - Chưa làm: chế độ mù màu (hết thời gian).
 - Hỏng phase trước?: Bóng Mực wander không còn đứng yên (theo ticket "đi về đèn tắt gần nhất"), đã ghi trong ADR; test Phase 2 liên quan đã cập nhật.
-- Token: (điền sau khi chạy /usage)
+- Token: Phase 3 + 4 cùng tốn ~3% hạn mức tuần (13% → 16%), phiên 41% → 63%.
